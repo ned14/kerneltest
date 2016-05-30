@@ -1,0 +1,45 @@
+/* test_kernel
+(C) 2016 Niall Douglas http://www.nedproductions.biz/
+File Created: Apr 2016
+*/
+
+#include "config.hpp"
+
+#ifndef BOOST_KERNELTEST_TEST_KERNEL_HPP
+#define BOOST_KERNELTEST_TEST_KERNEL_HPP
+
+/*! \brief Implement a test kernel
+\param category This category of test kernel. Typically 'integration'.
+\param product Name of the product or library being tested.
+\param test The name of this test kernel.
+\param name The name of this test.
+\param desc A pretty printable description of the test.
+\param ... Code implementing the test kernel.
+*/
+// clang-format off
+#define BOOST_KERNELTEST_TEST_KERNEL(category, product, test, name, desc, ...)                                                                                                                                                                                                                                                 \
+  \
+BOOST_AUTO_TEST_CASE(category/product/test/name, desc)                                                                                                                                                                                                                                                                         \
+  {                                                                                                                                                                                                                                                                                                                            \
+    \
+static constexpr const char __integration_test_kernel_category[] = #category;                                                                                                                                                                                                                                                  \
+    \
+static constexpr const char __integration_test_kernel_product[] = #product;                                                                                                                                                                                                                                                    \
+    \
+static constexpr const char __integration_test_kernel_test[] = #test;                                                                                                                                                                                                                                                          \
+    \
+static constexpr const char __integration_test_kernel_name[] = #name;                                                                                                                                                                                                                                                          \
+    \
+static constexpr const char __integration_test_kernel_description[] = desc;                                                                                                                                                                                                                                                    \
+    using namespace BOOST_KERNELTEST_V1_NAMESPACE;                                                                                                                                                                                                                                                                             \
+    \
+std::cout                                                                                                                                                                                                                                                                                                                      \
+    << "\n\n"                                                                                                                                                                                                                                                                                                                  \
+    << console_colours::bold << console_colours::blue << __integration_test_kernel_category << "/" << __integration_test_kernel_product << "/" << __integration_test_kernel_test << "/" << __integration_test_kernel_name << ":\n"                                                                                                                                  \
+    << console_colours::bold << console_colours::white << desc << console_colours::normal << std::endl;                                                                                                                                                                                                                        \
+    \
+__VA_ARGS__;                                                                                                                                                                                                                                                                                                                   \
+  }
+// clang-format on
+
+#endif  // namespace
