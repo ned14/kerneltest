@@ -8,44 +8,42 @@ File Created: Apr 2016
 #ifndef BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 #define BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 
-// We need an aggregate initialisable collection of heterogeneous types
-#if __cplusplus >= 20170000L
-#include <tuple>
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
-template <class... Types> using parameters = std::tuple<Types...>;
-BOOST_KERNELTEST_V1_NAMESPACE_END
-#else
-#include "../boost-lite/include/atuple.hpp"
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
-template <class... Types> using parameters = boost_lite::aggregate_tuple::atuple<Types...>;
-BOOST_KERNELTEST_V1_NAMESPACE_END
-#endif
-
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
-template <class OutcomeType, class... InputTypes, class Container, class... Hooks> parameter_permuter<OutcomeType, InputTypes...> mt_permute_parameters(Container &&cont, Hooks &&... hooks);
 
 /*! \brief A parameter permuter instance
 \tparam is_mt True if this is a multithreaded parameter permuter
-\tparam OutcomeType An outcome<T>, result<T> or option<T> for the outcome of the test kernel
-\tparam InputTypes The types of the parameters of the test kernel
-\tparam Container The type of the container containing the parameter sets
-\tparam Hooks The types of any pretest or posttest hooks
+\tparam ParamSequence A sequence of parameter calls
 */
-template <bool is_mt, class Sequence> class parameter_permuter
+template <bool is_mt, class ParamSequence> class parameter_permuter
 {
-  template <class OutcomeType, class... InputTypes, template <class...> class Sequence, class... Hooks> friend auto mt_permute_parameters(Sequence<parameters<OutcomeType, InputTypes...>> &&seq, Hooks &&... hooks);
-  Sequence params;
+  ParamSequence params;
 
-  parameter_permuter(Sequence &&_params)
+public:
+  parameter_permuter(ParamSequence &&_params)
       : params(std::move(_params))
   {
   }
 
-public:
   //! Permute the callable f with this parameter permuter
-  template <class U> void operator()(U &&f) noexcept {}
+  template <class U> void operator()(U &&f) noexcept
+  {
+    // Make an array of outcome<decltype(f())>
+    // Loop params, instantiating all hooks before each kernel call
+    // Trap any exception throws into the outcome
+    // If we are multithreaded, use threads :)
+  }
 };
+
+namespace detail
+{
+  template <class ParamSequence, class OutcomeType, class... Parameters> struct is_parameters_sequence_type_valid : std::false_type
+  {
+  };
+  template <class OutcomeType, class... Parameters, template <class...> class Container> struct is_parameters_sequence_type_valid<Container<parameters<OutcomeType, Parameters...>>, OutcomeType, Parameters...> : std::true_type
+  {
+  };
+}
 
 /*! \brief Create a multithreaded parameter permuter
 \tparam OutcomeType An outcome<T>, result<T> or option<T> for the outcome of the test kernel
@@ -53,13 +51,16 @@ public:
 \tparam Sequence The type of the sequence containing the parameter sets
 \tparam Hooks The types of any pretest or posttest hooks
 \param seq The sequence of parameter sets
-\param hooks Any pretest or posttest hooks
 */
-template <class OutcomeType, class... InputTypes, template <class...> class Sequence, class... Hooks> auto mt_permute_parameters(Sequence<parameters<OutcomeType, InputTypes...>> &&seq, Hooks &&... hooks)
+template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&... hooks)
 {
-  using ContainerType = typename std::decay<decltype(seq)>::type;
-  parameter_permuter<true, ContainerType> ret(std::move(seq));
-  hooks(ret)...;
+  parameter_permuter<true, Sequence> ret(std::forward<Sequence>(seq));
+  return ret;
+}
+//! \overload
+template <class... Parameters, class... Hooks> auto mt_permute_parameters(std::initializer_list<parameters<Parameters...>> seq, Hooks &&... hooks)
+{
+  parameter_permuter<true, std::initializer_list<parameters<Parameters...>>> ret(std::move(seq));
   return ret;
 }
 

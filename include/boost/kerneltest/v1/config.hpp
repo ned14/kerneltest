@@ -159,14 +159,14 @@ File Created: Apr 2016
 #define BOOST_STL11_THREAD_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
 #define BOOST_STL11_THREAD_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
 // clang-format off
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, atomic)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, chrono)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, condition_variable)
-#include BOOST_BINDLIB_INCLUDE_STL1z(../bindlib, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL, filesystem)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, future)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, mutex)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, ratio)
-#include BOOST_BINDLIB_INCLUDE_STL11(../bindlib, BOOST_KERNELTEST_V1_STL11_IMPL, thread)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, atomic)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, chrono)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, condition_variable)
+#include BOOST_BINDLIB_INCLUDE_STL1z(../boost-lite, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL, filesystem)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, future)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, mutex)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, ratio)
+#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, thread)
 // clang-format on
 
 
@@ -175,6 +175,19 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 // We are so heavily tied into Outcome we just import it wholesale into our namespace
 using namespace BOOST_OUTCOME_V1_NAMESPACE;
 BOOST_KERNELTEST_V1_NAMESPACE_END
+
+// We need an aggregate initialisable collection of heterogeneous types
+#if __cplusplus >= 20170000L || __GNUC__ >= 6
+#include <tuple>
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+template <class... Types> using parameters = std::tuple<Types...>;
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#else
+#include "../boost-lite/include/atuple.hpp"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+template <class... Types> using parameters = boost_lite::aggregate_tuple::tuple<Types...>;
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#endif
 
 //#define BOOST_CATCH_CUSTOM_MAIN_DEFINED
 #include "../boost-lite/include/boost/test/unit_test.hpp"
@@ -271,3 +284,5 @@ template <class T> inline void print_result(bool v, const T &result)
     std::cout << bold << red << "FAILED" << normal << std::endl;
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
+
+#endif  // need define
