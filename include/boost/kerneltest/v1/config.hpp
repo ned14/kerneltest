@@ -181,11 +181,15 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 #include <tuple>
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 template <class... Types> using parameters = std::tuple<Types...>;
+template <class T> using parameters_size = std::tuple_size<T>;
+template <size_t N, class T> using parameters_element = std::tuple_element<N, T>;
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #else
 #include "../boost-lite/include/atuple.hpp"
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 template <class... Types> using parameters = boost_lite::aggregate_tuple::tuple<Types...>;
+template <class T> using parameters_size = boost_lite::aggregate_tuple::tuple_size<T>;
+template <size_t N, class T> using parameters_element = boost_lite::aggregate_tuple::tuple_element<N, T>;
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
 

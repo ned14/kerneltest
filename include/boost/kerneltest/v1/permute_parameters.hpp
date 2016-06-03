@@ -8,26 +8,68 @@ File Created: Apr 2016
 #ifndef BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 #define BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 
+#include <vector>
+
+template <class T> struct print_type
+{
+private:
+  print_type() {}
+};
+
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
+namespace detail
+{
+  template <class ParamSequence, class Callable> struct result_of_parameter_permute;
+  template <class OutcomeType, class... Types, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, parameters<Types...>, Excess...>, Callable>
+  {
+    using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
+  };
+}
 
 /*! \brief A parameter permuter instance
 \tparam is_mt True if this is a multithreaded parameter permuter
 \tparam ParamSequence A sequence of parameter calls
 */
-template <bool is_mt, class ParamSequence> class parameter_permuter
+template <bool is_mt, class ParamSequence, class... Hooks> class parameter_permuter
 {
-  ParamSequence params;
+  ParamSequence _params;
+  std::tuple<Hooks...> _hooks;
 
 public:
-  parameter_permuter(ParamSequence &&_params)
-      : params(std::move(_params))
+  //! True if this parameter permuter is multithreaded
+  static constexpr bool is_multithreaded = is_mt;
+  //! The type of the sequence of parameters
+  using parameter_sequence_type = ParamSequence;
+  //! The type of an individual parameter set
+  using parameter_sequence_value_type = typename parameter_sequence_type::value_type;
+  //! The type of the outcome from an individual parameter set
+  using outcome_type = typename parameters_element<0, parameter_sequence_value_type>::type;
+  //! The value type of the outcome from an individual parameter set
+  using outcome_value_type = typename outcome_type::value_type;
+  //! Accessor for the outcome from an individual parameter set
+  static constexpr const outcome_type &outcome_value(const parameter_sequence_value_type &v) { return std::get<0>(v); }
+  //! The number of parameters in an individual parameter set
+  static constexpr size_t parameters_size = BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<parameter_sequence_value_type>::value - 1;
+  //! The type of the parameter at index N
+  template <size_t N> using parameter_type = typename parameters_element<1 + N, parameter_sequence_value_type>::type;
+  //! Accessor for the parameter at index N
+  template <size_t N> static constexpr const parameter_type<N> &parameter_value(const parameter_sequence_value_type &v) { return std::get<N + 1>(v); }
+
+  //! Constructs an instance. Best to use mt_permute_parameters() or st_permute_parameters() instead.
+  parameter_permuter(ParamSequence &&params, std::tuple<Hooks...> &&hooks)
+      : _params(std::move(params))
+      , _hooks(std::move(hooks))
   {
   }
 
   //! Permute the callable f with this parameter permuter
-  template <class U> void operator()(U &&f) noexcept
+  template <class U> auto operator()(U &&f)
   {
+    using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
+    using return_type_as_if_void = typename return_type::template rebind<void>;
+    static_assert(outcome_type::has_value_type ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
+    std::vector<return_type> results(_params.size());
     // Make an array of outcome<decltype(f())>
     // Loop params, instantiating all hooks before each kernel call
     // Trap any exception throws into the outcome
@@ -54,13 +96,13 @@ namespace detail
 */
 template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&... hooks)
 {
-  parameter_permuter<true, Sequence> ret(std::forward<Sequence>(seq));
+  parameter_permuter<true, Sequence, Hooks...> ret(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
   return ret;
 }
 //! \overload
 template <class... Parameters, class... Hooks> auto mt_permute_parameters(std::initializer_list<parameters<Parameters...>> seq, Hooks &&... hooks)
 {
-  parameter_permuter<true, std::initializer_list<parameters<Parameters...>>> ret(std::move(seq));
+  parameter_permuter<true, std::initializer_list<parameters<Parameters...>>, Hooks...> ret(std::move(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
   return ret;
 }
 
