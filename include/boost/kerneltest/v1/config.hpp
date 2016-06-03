@@ -63,7 +63,7 @@ File Created: Apr 2016
 #else
 #define BOOST_KERNELTEST_V1_FILESYSTEM_IMPL std
 #endif
-#define BOOST_KERNELTEST_V1 (boost), (kerneltest), (BOOST_BINDLIB_NAMESPACE_VERSION(v1, BOOST_KERNELTEST_V1_STL11_IMPL, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL), inline)
+#define BOOST_KERNELTEST_V1 (boost), (kerneltest), (BOOSTLITE_NAMESPACE_VERSION(v1, BOOST_KERNELTEST_V1_STL11_IMPL, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL), inline)
 #if DOXYGEN_SHOULD_SKIP_THIS
 #define BOOST_KERNELTEST_V1_NAMESPACE boost::kerneltest::v1
 #define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN                                                                                                                                                                                                                                                                                    \
@@ -78,9 +78,9 @@ File Created: Apr 2016
   }                                                                                                                                                                                                                                                                                                                            \
   }
 #else
-#define BOOST_KERNELTEST_V1_NAMESPACE BOOST_BINDLIB_NAMESPACE(BOOST_KERNELTEST_V1)
-#define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1)
-#define BOOST_KERNELTEST_V1_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE BOOSTLITE_NAMESPACE(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN BOOSTLITE_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE_END BOOSTLITE_NAMESPACE_END(BOOST_KERNELTEST_V1)
 #endif
 
 // From automated matrix generator
@@ -115,16 +115,8 @@ File Created: Apr 2016
 #ifdef BOOST_KERNELTEST_NEED_DEFINE
 #undef BOOST_KERNELTEST_KERNELTEST_H
 
-#define BOOST_STL11_ATOMIC_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_ATOMIC_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
 #define BOOST_STL11_ATOMIC_MAP_NO_ATOMIC_CHAR32_T  // missing VS14
 #define BOOST_STL11_ATOMIC_MAP_NO_ATOMIC_CHAR16_T  // missing VS14
-#define BOOST_STL11_CHRONO_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11), (chrono))
-#define BOOST_STL11_CHRONO_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11), (chrono))
-#define BOOST_STL11_CONDITION_VARIABLE_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_CONDITION_VARIABLE_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL1z_FILESYSTEM_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl1z), (filesystem))
-#define BOOST_STL1z_FILESYSTEM_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl1z), (filesystem))
 // Match Dinkumware's TR2 implementation
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_SYMLINK_OPTION
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_COPY_OPTION
@@ -149,25 +141,67 @@ File Created: Apr 2016
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_COPY_DIRECTORY
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_NATIVE
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_UNIQUE_PATH
-#define BOOST_STL11_FUTURE_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_FUTURE_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_FUTURE_MAP_NO_FUTURE
-#define BOOST_STL11_MUTEX_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_MUTEX_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_RATIO_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_RATIO_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_THREAD_MAP_NAMESPACE_BEGIN BOOST_BINDLIB_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1, (stl11))
-#define BOOST_STL11_THREAD_MAP_NAMESPACE_END BOOST_BINDLIB_NAMESPACE_END(BOOST_KERNELTEST_V1, (stl11))
-// clang-format off
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, atomic)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, chrono)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, condition_variable)
-#include BOOST_BINDLIB_INCLUDE_STL1z(../boost-lite, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL, filesystem)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, future)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, mutex)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, ratio)
-#include BOOST_BINDLIB_INCLUDE_STL11(../boost-lite, BOOST_KERNELTEST_V1_STL11_IMPL, thread)
-// clang-format on
+
+#include "../boost-lite/include/bind/stl11/std/atomic"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+namespace stl11
+{
+  using namespace boost_lite::bind::std::atomic;
+}
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#if BOOST_OUTCOME_USE_BOOST_THREAD
+#include "../boost-lite/include/bind/stl11/boost/chrono"
+#include "../boost-lite/include/bind/stl11/boost/condition_variable"
+#include "../boost-lite/include/bind/stl11/boost/future"
+#include "../boost-lite/include/bind/stl11/boost/mutex"
+#include "../boost-lite/include/bind/stl11/boost/ratio"
+#include "../boost-lite/include/bind/stl11/boost/thread"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+namespace stl11
+{
+  namespace chrono = boost_lite::bind::boost::chrono;
+  using namespace boost_lite::bind::boost::condition_variable;
+  using namespace boost_lite::bind::boost::future;
+  using namespace boost_lite::bind::boost::mutex;
+  using namespace boost_lite::bind::boost::ratio;
+  using namespace boost_lite::bind::boost::thread;
+}
+#else
+#include "../boost-lite/include/bind/stl11/std/chrono"
+#include "../boost-lite/include/bind/stl11/std/condition_variable"
+#include "../boost-lite/include/bind/stl11/std/future"
+#include "../boost-lite/include/bind/stl11/std/mutex"
+#include "../boost-lite/include/bind/stl11/std/ratio"
+#include "../boost-lite/include/bind/stl11/std/thread"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+namespace stl11
+{
+  namespace chrono = boost_lite::bind::std::chrono;
+  using namespace boost_lite::bind::std::condition_variable;
+  using namespace boost_lite::bind::std::future;
+  using namespace boost_lite::bind::std::mutex;
+  using namespace boost_lite::bind::std::ratio;
+  using namespace boost_lite::bind::std::thread;
+}
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#endif
+#if BOOST_AFIO_USE_BOOST_FILESYSTEM
+#include "../boost-lite/include/bind/stl1z/boost/filesystem"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+namespace stl1z
+{
+  namespace filesystem = boost_lite::bind::boost::filesystem;
+}
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#else
+#include "../boost-lite/include/bind/stl1z/std/filesystem"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+namespace stl1z
+{
+  namespace filesystem = boost_lite::bind::std::filesystem;
+}
+BOOST_KERNELTEST_V1_NAMESPACE_END
+#endif
 
 
 #include "../outcome/include/boost/outcome.hpp"
