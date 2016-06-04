@@ -45,18 +45,4 @@ __VA_ARGS__;                                                                    
   }
 // clang-format on
 
-
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
-template <class T> inline void print_result(bool v, const T &result)
-{
-  using namespace boost_lite::console_colours;
-  if(v)
-    std::cout << bold << green << result << normal << std::endl;
-  else
-    std::cout << bold << red << "FAILED" << normal << std::endl;
-}
-BOOST_KERNELTEST_V1_NAMESPACE_END
-
-#define BOOST_KERNELTEST_CHECK_RESULT(r) BOOST_CHECK(r.has_value())
-
 #endif  // namespace

@@ -208,6 +208,10 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 // We are so heavily tied into Outcome we just import it wholesale into our namespace
 using namespace BOOST_OUTCOME_V1_NAMESPACE;
+// Force these to the same overloading precedence as if they were defined in the AFIO namespace
+using BOOST_OUTCOME_V1_NAMESPACE::outcome;
+using BOOST_OUTCOME_V1_NAMESPACE::make_errored_result;
+using BOOST_OUTCOME_V1_NAMESPACE::make_errored_outcome;
 BOOST_KERNELTEST_V1_NAMESPACE_END
 
 // We need an aggregate initialisable collection of heterogeneous types
