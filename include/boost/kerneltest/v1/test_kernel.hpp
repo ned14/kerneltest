@@ -3,7 +3,10 @@
 File Created: Apr 2016
 */
 
+#include "../boost-lite/include/console_colours.hpp"
 #include "config.hpp"
+//#define BOOST_CATCH_CUSTOM_MAIN_DEFINED
+#include "../boost-lite/include/boost/test/unit_test.hpp"
 
 #ifndef BOOST_KERNELTEST_TEST_KERNEL_HPP
 #define BOOST_KERNELTEST_TEST_KERNEL_HPP
@@ -35,11 +38,25 @@ static constexpr const char __integration_test_kernel_description[] = desc;     
     \
 std::cout                                                                                                                                                                                                                                                                                                                      \
     << "\n\n"                                                                                                                                                                                                                                                                                                                  \
-    << console_colours::bold << console_colours::blue << __integration_test_kernel_category << "/" << __integration_test_kernel_product << "/" << __integration_test_kernel_test << "/" << __integration_test_kernel_name << ":\n"                                                                                                                                  \
-    << console_colours::bold << console_colours::white << desc << console_colours::normal << std::endl;                                                                                                                                                                                                                        \
+    << boost_lite::console_colours::bold << boost_lite::console_colours::blue << __integration_test_kernel_category << "/" << __integration_test_kernel_product << "/" << __integration_test_kernel_test << "/" << __integration_test_kernel_name << ":\n"                                                                                                                                  \
+    << boost_lite::console_colours::bold << boost_lite::console_colours::white << desc << boost_lite::console_colours::normal << std::endl;                                                                                                                                                                                                                        \
     \
 __VA_ARGS__;                                                                                                                                                                                                                                                                                                                   \
   }
 // clang-format on
+
+
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+template <class T> inline void print_result(bool v, const T &result)
+{
+  using namespace boost_lite::console_colours;
+  if(v)
+    std::cout << bold << green << result << normal << std::endl;
+  else
+    std::cout << bold << red << "FAILED" << normal << std::endl;
+}
+BOOST_KERNELTEST_V1_NAMESPACE_END
+
+#define BOOST_KERNELTEST_CHECK_RESULT(r) BOOST_CHECK(r.has_value())
 
 #endif  // namespace

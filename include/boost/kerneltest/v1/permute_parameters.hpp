@@ -63,7 +63,7 @@ public:
   {
   }
 
-  //! Permute the callable f with this parameter permuter
+  //! Permute the callable f with this parameter permuter, returning a vector of results
   template <class U> auto operator()(U &&f)
   {
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
@@ -74,6 +74,7 @@ public:
     // Loop params, instantiating all hooks before each kernel call
     // Trap any exception throws into the outcome
     // If we are multithreaded, use threads :)
+    return results;
   }
 };
 
