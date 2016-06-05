@@ -13,24 +13,28 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace hooks
 {
   using filesystem_setup_parameters = parameters<const char *>;
-  inline auto filesystem_setup(stl1z::filesystem::path workspacebase)
+  struct filesystem_setup_hook
   {
-    return [workspacebase = std::move(workspacebase)](auto *parent, auto &testret, const char *workspace)
+    const char *workspacebase;
+    template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
     {
       // todo
       return 0;
-    };
-  }
+    }
+  };
+  constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_hook{workspacebase}; }
 
   using filesystem_comparison_inexact_parameters = parameters<const char *>;
-  inline auto filesystem_comparison_inexact(stl1z::filesystem::path workspacebase)
+  struct filesystem_comparison_inexact_hook
   {
-    return [workspacebase = std::move(workspacebase)](auto *parent, auto &testret, const char *workspace)
+    const char *workspacebase;
+    template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
     {
       // todo
       return 0;
-    };
-  }
+    }
+  };
+  constexpr inline auto filesystem_comparison_inexact(const char *workspacebase) { return filesystem_comparison_inexact_hook{workspacebase}; }
 
 #if 0
 

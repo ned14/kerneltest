@@ -71,6 +71,15 @@ namespace detail
   {
     using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
   };
+
+  template <class Hook, class Permuter, class Outcome, class... Types, size_t... Idxs> auto instantiate_hook(Hook &&hook, Permuter *parent, Outcome &out, size_t idx, const std::tuple<Types...> &pars, std::index_sequence<Idxs...>) { return hook(parent, out, idx, std::get<Idxs>(pars)...); }
+  template <class... Hooks, class Permuter, class Outcome, class ParamSequence, size_t... Idxs> auto instantiate_hooks(const std::tuple<Hooks...> &hooks, Permuter *parent, Outcome &out, size_t idx, const ParamSequence &pars, std::index_sequence<Idxs...>)
+  {
+    // callspec is (parameter_permuter<...> *parent, outcome<T> &testret, size_t, pars)
+    // pars<0> is expected outcome, pars<1> is kernel parameter set. pars<2> onwards are the hook parameters
+    return std::make_tuple(instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...);
+  }
+
   template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
 
   template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<T> &shouldbe) { return kernel_outcome == shouldbe; };
@@ -164,7 +173,10 @@ public:
     auto call_f = [&](size_t idx) {
       using callable_parameters_type = parameter_type<0>;
       const callable_parameters_type &p = parameter_value<0>(*params[idx]);
-      // TODO: Hooks
+      // Instantiate the hooks
+      auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, *params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
+      (void) hooks;
+      // Call the kernel
       results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
     };
 #ifdef _OPENMP
