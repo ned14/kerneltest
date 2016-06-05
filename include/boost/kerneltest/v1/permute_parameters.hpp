@@ -23,19 +23,30 @@ namespace boost_lite
 {
   namespace type_traits
   {
+#if 0
     namespace detail
     {
       template <size_t N> struct Char
       {
         char foo[N];
       };
-      template <class T, size_t = T().size()> Char<2> has_constexpr_size(int) { return Char<2>(); }
-      template <class T> Char<1> has_constexpr_size(...) { return Char<1>(); }
+      template <class T> constexpr inline auto has_constexpr_size(T &&v) { return Char<(v.size(), 2)>(); }
+      template <class T> constexpr inline Char<1> has_constexpr_size(...) { return Char<1>(); }
     }
-    template <class T> using has_constexpr_size = std::integral_constant<bool, sizeof(detail::has_constexpr_size<T>(1)) == 2>;
+    //! Returns true if the instance of v has a constexpr size()
+    template <class T> constexpr inline bool has_constexpr_size(T &&v) { return 2 == sizeof(detail::has_constexpr_size<T>(std::forward<T>(v))); }
 
-    static_assert(std::array<int, 2>().size() == 2, "foo");
-    static_assert(has_constexpr_size<std::array<int, 2>>::value, "foo");
+    // static_assert(std::array<int, 2>().size() == 2, "foo");
+    static_assert(has_constexpr_size(std::array<int, 2>()), "foo");
+#else
+    //! Returns true if the instance of v has a constexpr size()
+    template <class T> struct has_constexpr_size : std::false_type
+    {
+    };
+    template <class T, size_t N> struct has_constexpr_size<std::array<T, N>> : std::true_type
+    {
+    };
+#endif
   }
 }
 
@@ -46,14 +57,14 @@ namespace detail
   template <class ParamSequence, bool = boost_lite::type_traits::has_constexpr_size<ParamSequence>::value> struct permutation_results_type
   {
     template <class T> using type = std::vector<T>;
-    ParamSequence operator()(size_t no) const { return ParamSequence(no); }
+    constexpr ParamSequence operator()(size_t no) const { return ParamSequence(no); }
   };
   template <class ParamSequence> struct permutation_results_type<ParamSequence, true>
   {
     template <class T> using type = std::array<T, ParamSequence().size()>;
-    ParamSequence operator()(size_t no) const { return ParamSequence(); }
+    constexpr ParamSequence operator()(size_t no) const { return ParamSequence(); }
   };
-  template <class T> T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
+  template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
 
   template <class ParamSequence, class Callable> struct result_of_parameter_permute;
   template <class OutcomeType, class... Types, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, parameters<Types...>, Excess...>, Callable>
@@ -99,6 +110,9 @@ template <bool is_mt, class ParamSequence, class... Hooks> class parameter_permu
   ParamSequence _params;
   std::tuple<Hooks...> _hooks;
 
+  // syntax helper for MSVC :)
+  using _permutation_results_type = typename detail::permutation_results_type<ParamSequence>;
+
 public:
   //! True if this parameter permuter is multithreaded
   static constexpr bool is_multithreaded = is_mt;
@@ -117,10 +131,10 @@ public:
   //! Accessor for the parameter at index N
   template <size_t N> static constexpr const parameter_type<N> &parameter_value(const parameter_sequence_value_type &v) { return std::get<N + 1>(v); }
   //! The type of the results returned by the call operator. Can be array<> or vector<> depending on ParamSequence
-  template <class T> using permutation_results_type = typename detail::permutation_results_type<ParamSequence>::template type<T>;
+  template <class T> using permutation_results_type = typename _permutation_results_type::template type<T>;
 
   //! Constructs an instance. Best to use mt_permute_parameters() or st_permute_parameters() instead.
-  parameter_permuter(ParamSequence &&params, std::tuple<Hooks...> &&hooks)
+  constexpr parameter_permuter(ParamSequence &&params, std::tuple<Hooks...> &&hooks)
       : _params(std::move(params))
       , _hooks(std::move(hooks))
   {
@@ -140,11 +154,13 @@ public:
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
     using return_type_as_if_void = typename return_type::template rebind<void>;
     static_assert(outcome_type::has_value_type ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
-    permutation_results_type<return_type> results(_params.size());
-    permutation_results_type<const parameter_sequence_value_type *> params;
-    params.reserve(_params.size());
-    for(auto &i : _params)
-      params.push_back(&i);
+    permutation_results_type<return_type> results(detail::make_permutation_results_type<permutation_results_type<return_type>>(_params.size()));
+    permutation_results_type<const parameter_sequence_value_type *> params(detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
+    {
+      auto it(params.begin());
+      for(auto &i : _params)
+        *it++ = &i;
+    }
     auto call_f = [&](size_t idx) {
       using callable_parameters_type = parameter_type<0>;
       const callable_parameters_type &p = parameter_value<0>(*params[idx]);
@@ -224,16 +240,14 @@ namespace detail
 \tparam Hooks The types of any pretest or posttest hooks
 \param seq The sequence of parameter sets
 */
-template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&... hooks)
+template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> constexpr parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&... hooks)
 {
-  parameter_permuter<true, Sequence, Hooks...> ret(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
-  return ret;
+  return parameter_permuter<true, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 //! \overload
-template <class... Parameters, class... Hooks> auto mt_permute_parameters(std::initializer_list<parameters<Parameters...>> seq, Hooks &&... hooks)
+template <class... Parameters, class... Hooks> constexpr auto mt_permute_parameters(std::initializer_list<parameters<Parameters...>> seq, Hooks &&... hooks)
 {
-  parameter_permuter<true, std::initializer_list<parameters<Parameters...>>, Hooks...> ret(std::move(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
-  return ret;
+  return parameter_permuter<true, std::initializer_list<parameters<Parameters...>>, Hooks...>(std::move(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 
 namespace detail
