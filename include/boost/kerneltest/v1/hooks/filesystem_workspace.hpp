@@ -12,17 +12,78 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace hooks
 {
-  using filesystem_setup_parameters = parameters<const char *>;
-  struct filesystem_setup_hook
+  namespace filesystem_setup_impl
   {
-    const char *workspacebase;
-    template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
+    // Record the current working directory and store it
+    static const stl1z::filesystem::path &starting_path()
     {
-      // todo
-      return 0;
+      static stl1z::filesystem::path p = stl1z::filesystem::current_path();
+      return p;
     }
-  };
-  constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_hook{workspacebase}; }
+    stl1z::filesystem::path _has_product(stl1z::filesystem::path dir)
+    {
+      std::string product(current_test_kernel.product);
+      if(stl1z::filesystem::exists(dir / product))
+        return dir / product;
+      if(stl1z::filesystem::exists(dir / ("boost." + product)))
+        return dir / ("boost." + product);
+      return stl1z::filesystem::path();
+    }
+
+    // Figure out an absolute path to the base of the library directory
+    static const stl1z::filesystem::path &library_directory()
+    {
+      static stl1z::filesystem::path ret;
+      if(!ret.empty())
+        return ret;
+      // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
+      // We must also account for an out-of-tree build
+      stl1z::filesystem::path library_dir = starting_path(), temp;
+      do
+      {
+        temp = _has_product(library_dir);
+        if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
+        {
+          ret = temp;
+          return ret;
+        }
+        library_dir = stl1z::filesystem::canonical(library_dir / "..");
+      } while(library_dir.native().size() > 3);
+      std::cerr << "FATAL: Couldn't figure out where the product " << current_test_kernel.product << " lives. You need a " << current_test_kernel.product << " directory somewhere in or above the directory you run the tests from." << std::endl;
+      std::terminate();
+      return ret;
+    }
+    // Figure out an absolute path to the correct test workspace templates
+    stl1z::filesystem::path workspace_template_path(const char *test_name)
+    {
+      stl1z::filesystem::path library_dir = library_directory();
+      if(stl1z::filesystem::exists(library_dir / "test" / "tests" / test_name))
+      {
+        return library_dir / "test" / "tests" / test_name;
+      }
+      std::cerr << "FATAL: Couldn't figure out where the test workspace templates live for test " << test_name << ". Product source directory is thought to be " << library_dir << std::endl;
+      std::terminate();
+    }
+
+    template <class Parent, class RetType> struct impl
+    {
+      impl(Parent *parent, RetType &testret, size_t idx, stl1z::filesystem::path &&workspace) {}
+      ~impl() noexcept(false) {}
+    };
+    struct inst
+    {
+      const char *workspacebase;
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<Parent, RetType>(parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace); }
+    };
+  }
+  //! The parameters for the filesystem_setup hook
+  using filesystem_setup_parameters = parameters<const char *>;
+  /*! Kernel test hook setting up a workspace directory for the test to run inside and deleting it after.
+  The working directory on first instantiation is assumed to be the correct place to put test workspaces.
+  \return A type which when called configures the workspace and on destruction deletes it
+  \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from
+  */
+  constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst{workspacebase}; }
 
   using filesystem_comparison_inexact_parameters = parameters<const char *>;
   struct filesystem_comparison_inexact_hook

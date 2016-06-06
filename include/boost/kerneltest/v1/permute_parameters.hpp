@@ -121,9 +121,9 @@ public:
   //! Returns the parameter sequence this permuter was constructed with
   const ParamSequence &parameter_sequence() const { return _params; }
 
-  /*! Permute the callable f with this parameter permuter, returning a vector of results.
-  \return An array or vector of results (depends on ParamSequence).
-  \throws bad_alloc Failure to allocate the vector of results.
+  /*! Permute the callable f with this parameter permuter, returning a sequence of results.
+  \return An array or vector of results (depends on ParamSequence::size() being constexpr).
+  \throws bad_alloc Failure to allocate the vector of results if returning a vector.
   \throws anything Any exception thrown by any call of the callable f
   \param f Some callable with callspec result(typename ParamSequence::value_type ...)
   */

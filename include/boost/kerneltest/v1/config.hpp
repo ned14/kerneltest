@@ -199,6 +199,10 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace stl1z
 {
   namespace filesystem = boost_lite::bind::std::filesystem;
+  struct path_hasher
+  {
+    size_t operator()(const filesystem::path &p) const { return hash_value(p.native()); }
+  };
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
@@ -230,5 +234,19 @@ template <class T> using parameters_size = boost_lite::aggregate_tuple::tuple_si
 template <size_t N, class T> using parameters_element = boost_lite::aggregate_tuple::tuple_element<N, T>;
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
+
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+
+//! Keeps what the current test kernel is for the calling thread
+static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
+{
+  const char *category;
+  const char *product;
+  const char *test;
+  const char *name;
+  const char *description;
+} current_test_kernel;
+
+BOOST_KERNELTEST_V1_NAMESPACE_END
 
 #endif  // need define

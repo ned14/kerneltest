@@ -25,16 +25,12 @@ File Created: Apr 2016
 BOOST_AUTO_TEST_CASE(category/product/test/name, desc)                                                                                                                                                                                                                                                                         \
   {                                                                                                                                                                                                                                                                                                                            \
     \
-static constexpr const char __integration_test_kernel_category[] = #category;                                                                                                                                                                                                                                                  \
-    \
-static constexpr const char __integration_test_kernel_product[] = #product;                                                                                                                                                                                                                                                    \
-    \
-static constexpr const char __integration_test_kernel_test[] = #test;                                                                                                                                                                                                                                                          \
-    \
-static constexpr const char __integration_test_kernel_name[] = #name;                                                                                                                                                                                                                                                          \
-    \
-static constexpr const char __integration_test_kernel_description[] = desc;                                                                                                                                                                                                                                                    \
     using namespace BOOST_KERNELTEST_V1_NAMESPACE;                                                                                                                                                                                                                                                                             \
+current_test_kernel.category=#category; \
+current_test_kernel.product=#product; \
+current_test_kernel.test=#test; \
+current_test_kernel.name=#name; \
+current_test_kernel.desc=desc; \
     \
 std::cout                                                                                                                                                                                                                                                                                                                      \
     << "\n\n"                                                                                                                                                                                                                                                                                                                  \
