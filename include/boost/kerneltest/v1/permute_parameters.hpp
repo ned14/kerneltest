@@ -19,42 +19,11 @@ private:
   print_type() {}
 };
 
-namespace boost_lite
-{
-  namespace type_traits
-  {
-#if 0
-    namespace detail
-    {
-      template <size_t N> struct Char
-      {
-        char foo[N];
-      };
-      template <class T> constexpr inline auto has_constexpr_size(T &&v) { return Char<(v.size(), 2)>(); }
-      template <class T> constexpr inline Char<1> has_constexpr_size(...) { return Char<1>(); }
-    }
-    //! Returns true if the instance of v has a constexpr size()
-    template <class T> constexpr inline bool has_constexpr_size(T &&v) { return 2 == sizeof(detail::has_constexpr_size<T>(std::forward<T>(v))); }
-
-    // static_assert(std::array<int, 2>().size() == 2, "foo");
-    static_assert(has_constexpr_size(std::array<int, 2>()), "foo");
-#else
-    //! Returns true if the instance of v has a constexpr size()
-    template <class T> struct has_constexpr_size : std::false_type
-    {
-    };
-    template <class T, size_t N> struct has_constexpr_size<std::array<T, N>> : std::true_type
-    {
-    };
-#endif
-  }
-}
-
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace detail
 {
-  template <class ParamSequence, bool = boost_lite::type_traits::has_constexpr_size<ParamSequence>::value> struct permutation_results_type
+  template <class ParamSequence, bool = boost_lite::type_traits::has_constexpr_size<ParamSequence>()> struct permutation_results_type
   {
     template <class T> using type = std::vector<T>;
     constexpr ParamSequence operator()(size_t no) const { return ParamSequence(no); }
