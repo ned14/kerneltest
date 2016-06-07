@@ -20,22 +20,22 @@ File Created: Apr 2016
 \param ... Code implementing the test kernel.
 */
 // clang-format off
-#define BOOST_KERNELTEST_TEST_KERNEL(category, product, test, name, desc, ...)                                                                                                                                                                                                                                                 \
+#define BOOST_KERNELTEST_TEST_KERNEL(_category, _product, _test, _name, _desc, ...)                                                                                                                                                                                                                                                 \
   \
-BOOST_AUTO_TEST_CASE(category/product/test/name, desc)                                                                                                                                                                                                                                                                         \
+BOOST_AUTO_TEST_CASE(_category/_product/_test/_name, _desc)                                                                                                                                                                                                                                                                         \
   {                                                                                                                                                                                                                                                                                                                            \
     \
     using namespace BOOST_KERNELTEST_V1_NAMESPACE;                                                                                                                                                                                                                                                                             \
-current_test_kernel.category=#category; \
-current_test_kernel.product=#product; \
-current_test_kernel.test=#test; \
-current_test_kernel.name=#name; \
-current_test_kernel.desc=desc; \
+current_test_kernel.category=#_category; \
+current_test_kernel.product=#_product; \
+current_test_kernel.test=#_test; \
+current_test_kernel.name=#_name; \
+current_test_kernel.description=_desc; \
     \
 std::cout                                                                                                                                                                                                                                                                                                                      \
     << "\n\n"                                                                                                                                                                                                                                                                                                                  \
-    << boost_lite::console_colours::bold << boost_lite::console_colours::blue << __integration_test_kernel_category << "/" << __integration_test_kernel_product << "/" << __integration_test_kernel_test << "/" << __integration_test_kernel_name << ":\n"                                                                                                                                  \
-    << boost_lite::console_colours::bold << boost_lite::console_colours::white << desc << boost_lite::console_colours::normal << std::endl;                                                                                                                                                                                                                        \
+    << boost_lite::console_colours::bold << boost_lite::console_colours::blue << #_category "/" #_product "/" #_test "/" #_name ":\n"                                                                                                                                  \
+    << boost_lite::console_colours::bold << boost_lite::console_colours::white << _desc << boost_lite::console_colours::normal << std::endl;                                                                                                                                                                                                                        \
     \
 __VA_ARGS__;                                                                                                                                                                                                                                                                                                                   \
   }

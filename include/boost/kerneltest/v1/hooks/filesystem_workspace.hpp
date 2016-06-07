@@ -3,6 +3,7 @@
 File Created: May 2016
 */
 
+#include "../../boost-lite/include/algorithm/string.hpp"
 #include "../config.hpp"
 
 #ifndef BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
@@ -14,15 +15,14 @@ namespace hooks
 {
   namespace filesystem_setup_impl
   {
-    // Record the current working directory and store it
-    static const stl1z::filesystem::path &starting_path()
+    //! Record the current working directory and store it
+    static inline const stl1z::filesystem::path &starting_path()
     {
       static stl1z::filesystem::path p = stl1z::filesystem::current_path();
       return p;
     }
-    stl1z::filesystem::path _has_product(stl1z::filesystem::path dir)
+    static inline stl1z::filesystem::path _has_product(stl1z::filesystem::path dir, const std::string &product)
     {
-      std::string product(current_test_kernel.product);
       if(stl1z::filesystem::exists(dir / product))
         return dir / product;
       if(stl1z::filesystem::exists(dir / ("boost." + product)))
@@ -30,50 +30,173 @@ namespace hooks
       return stl1z::filesystem::path();
     }
 
-    // Figure out an absolute path to the base of the library directory
-    static const stl1z::filesystem::path &library_directory()
+    /*! Figure out an absolute path to the base of the product's directory
+    and cache it for later fast returns. Changing the product from the
+    cached value will recalculate the path.
+    */
+    template <bool is_throwing = false> inline stl1z::filesystem::path library_directory(const char *__product = current_test_kernel.product) noexcept(!is_throwing)
     {
-      static stl1z::filesystem::path ret;
-      if(!ret.empty())
-        return ret;
-      // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
-      // We must also account for an out-of-tree build
-      stl1z::filesystem::path library_dir = starting_path(), temp;
-      do
+      try
       {
-        temp = _has_product(library_dir);
-        if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
+        static std::mutex lock;
+        static std::string product;
+        static stl1z::filesystem::path ret;
+        if(__product == product)
+          return ret;
+        std::lock_guard<decltype(lock)> h(lock);
+        if(__product == product)
+          return ret;
+        stl1z::filesystem::path library_dir = starting_path();
+
+        // Is there an environment variable BOOST_KERNELTEST_product_HOME?
+        std::string _product(__product);
+        std::string envkey("BOOST_KERNELTEST_" + boost_lite::algorithm::string::toupper(_product) + "_HOME");
+#ifdef _UNICODE
+        std::wstring _envkey;
+        for(auto &i : envkey)
+          _envkey.push_back(i);
+        auto env = _wgetenv(_envkey.c_str());
+#else
+        auto env = getenv(envkey.c_str());
+#endif
+        if(env)
         {
-          ret = temp;
+          ret.assign(env);
+          product = _product;
           return ret;
         }
-        library_dir = stl1z::filesystem::canonical(library_dir / "..");
-      } while(library_dir.native().size() > 3);
-      std::cerr << "FATAL: Couldn't figure out where the product " << current_test_kernel.product << " lives. You need a " << current_test_kernel.product << " directory somewhere in or above the directory you run the tests from." << std::endl;
-      std::terminate();
-      return ret;
-    }
-    // Figure out an absolute path to the correct test workspace templates
-    stl1z::filesystem::path workspace_template_path(const char *test_name)
-    {
-      stl1z::filesystem::path library_dir = library_directory();
-      if(stl1z::filesystem::exists(library_dir / "test" / "tests" / test_name))
-      {
-        return library_dir / "test" / "tests" / test_name;
+
+        // If no environment variable, start searching from the current working directory
+        // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
+        // We must also account for an out-of-tree build
+        stl1z::filesystem::path temp;
+        do
+        {
+          temp = _has_product(library_dir, _product);
+          if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
+          {
+            ret = temp;
+            product = _product;
+            return ret;
+          }
+          library_dir = stl1z::filesystem::canonical(library_dir / "..");
+        } while(library_dir.native().size() > 3);
+        if(is_throwing)
+          throw std::runtime_error("Couldn't figure out where the product lives");
+        else
+        {
+          std::cerr << "FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl;
+          std::terminate();
+        }
+        return ret;
       }
-      std::cerr << "FATAL: Couldn't figure out where the test workspace templates live for test " << test_name << ". Product source directory is thought to be " << library_dir << std::endl;
-      std::terminate();
+      catch(...)
+      {
+        if(!is_throwing)
+        {
+          std::cerr << "library_directory() unexpectedly failed" << std::endl;
+          std::terminate();
+        }
+        throw;
+      }
     }
 
-    template <class Parent, class RetType> struct impl
+    //! Figure out an absolute path to the correct test workspace template
+    template <bool is_throwing = false> inline stl1z::filesystem::path workspace_template_path(const stl1z::filesystem::path &workspace) noexcept(!is_throwing)
     {
-      impl(Parent *parent, RetType &testret, size_t idx, stl1z::filesystem::path &&workspace) {}
-      ~impl() noexcept(false) {}
+      try
+      {
+        stl1z::filesystem::path library_dir = library_directory();
+        if(stl1z::filesystem::exists(library_dir / "test" / "tests" / workspace))
+        {
+          return library_dir / "test" / "tests" / workspace;
+        }
+        if(is_throwing)
+          throw std::runtime_error("Couldn't figure out where the test workspace templates live");
+        else
+        {
+          std::cerr << "FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl;
+          std::terminate();
+        }
+      }
+      catch(...)
+      {
+        if(!is_throwing)
+        {
+          std::cerr << "workspace_template_path() unexpectedly failed" << std::endl;
+          std::terminate();
+        }
+        throw;
+      }
+    }
+
+    template <bool is_throwing, class Parent, class RetType> struct impl
+    {
+      stl1z::filesystem::path _current;
+
+      void _remove_workspace() noexcept(!is_throwing)
+      {
+        stl1z::fs_error_code ec;
+        auto begin = stl11::chrono::steady_clock::now();
+        do
+        {
+          bool exists = stl1z::filesystem::exists(_current, ec);
+          if(!ec && !exists)
+            return;
+          stl1z::filesystem::remove_all(_current, ec);
+        } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
+        if(is_throwing)
+          throw std::runtime_error("Couldn't delete workspace after five seconds of trying");
+        std::cerr << "FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl;
+        std::terminate();
+      }
+
+      impl(Parent *parent, RetType &testret, size_t idx, stl1z::filesystem::path &&workspace) noexcept(!is_throwing)
+      {
+        auto template_path = workspace_template_path<is_throwing>(workspace);
+        // Make the workspace we choose unique to this thread
+        _current = starting_path() / "kerneltest_workspace_" + std::to_string(static_cast<uintptr_t>(std::this_thread::get_id()));
+        // Clear out any stale workspace with the same name at this path just in case
+        _remove_workspace();
+
+        stl1z::fs_error_code ec;
+        auto fatalexit = [&] {
+          if(is_throwing)
+            throw stl1z::fs_system_error(ec);
+          std::cerr << "FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl;
+          std::terminate();
+        };
+        // Is the input workspace no workspace? In which case create an empty directory
+        bool exists = stl1z::filesystem::exists(template_path, ec);
+        if(ec)
+          fatalexit();
+        if(!exists)
+        {
+          stl1z::filesystem::create_directory(_current, ec);
+          if(ec)
+            fatalexit();
+        }
+        else
+        {
+          auto begin = stl11::chrono::steady_clock::now();
+          do
+          {
+            stl1z::filesystem::copy(template_path, _current, stl1z::filesystem::copy_options::recursive, ec);
+            if(!ec)
+              break;
+          } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
+          if(ec)
+            fatalexit();
+        }
+        // Set the working directory to the newly configured workspace
+        stl1z::filesystem::current_path(_current);
+      }
+      ~impl() noexcept(!is_throwing) {}
     };
-    struct inst
+    template <bool is_throwing> struct inst
     {
       const char *workspacebase;
-      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<Parent, RetType>(parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace); }
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<is_throwing, Parent, RetType>(parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace); }
     };
   }
   //! The parameters for the filesystem_setup hook
@@ -83,7 +206,7 @@ namespace hooks
   \return A type which when called configures the workspace and on destruction deletes it
   \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from
   */
-  constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst{workspacebase}; }
+  template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
 
   using filesystem_comparison_inexact_parameters = parameters<const char *>;
   struct filesystem_comparison_inexact_hook

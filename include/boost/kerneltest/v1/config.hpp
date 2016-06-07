@@ -191,6 +191,8 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace stl1z
 {
   namespace filesystem = boost_lite::bind::boost::filesystem;
+  using fs_error_code = ::boost::error_code;
+  using fs_system_error = ::boost::system_error;
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #else
@@ -199,10 +201,8 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace stl1z
 {
   namespace filesystem = boost_lite::bind::std::filesystem;
-  struct path_hasher
-  {
-    size_t operator()(const filesystem::path &p) const { return hash_value(p.native()); }
-  };
+  using fs_error_code = ::std::error_code;
+  using fs_system_error = ::std::system_error;
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
@@ -236,6 +236,12 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
 
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+
+//! Many <filesystem> TS implementations are not implementing std::hash for filesystem::path
+struct path_hasher
+{
+  size_t operator()(const stl1z::filesystem::path &p) const { return std::hash<stl1z::filesystem::path::string_type>()(p.native()); }
+};
 
 //! Keeps what the current test kernel is for the calling thread
 static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
