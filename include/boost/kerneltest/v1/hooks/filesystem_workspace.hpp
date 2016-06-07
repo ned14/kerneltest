@@ -3,11 +3,13 @@
 File Created: May 2016
 */
 
-#include "../../boost-lite/include/algorithm/string.hpp"
 #include "../config.hpp"
 
 #ifndef BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 #define BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
+
+#include "../../boost-lite/include/algorithm/string.hpp"
+#include "../../boost-lite/include/utils/thread.hpp"
 
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
@@ -155,7 +157,7 @@ namespace hooks
       {
         auto template_path = workspace_template_path<is_throwing>(workspace);
         // Make the workspace we choose unique to this thread
-        _current = starting_path() / "kerneltest_workspace_" + std::to_string(static_cast<uintptr_t>(std::this_thread::get_id()));
+        _current = starting_path() / ("kerneltest_workspace_" + std::to_string(boost_lite::utils::thread::this_thread_id()));
         // Clear out any stale workspace with the same name at this path just in case
         _remove_workspace();
 
