@@ -11,6 +11,8 @@ File Created: May 2016
 #include "../../boost-lite/include/algorithm/string.hpp"
 #include "../../boost-lite/include/utils/thread.hpp"
 
+#include <unordered_map>
+
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace hooks
@@ -227,7 +229,9 @@ namespace hooks
       }
       ~impl() noexcept(!is_throwing)
       {
-        // todo
+        current_test_kernel.working_directory = nullptr;
+        stl1z::filesystem::current_path(starting_path());
+        _remove_workspace();
       }
     };
     template <bool is_throwing> struct inst
@@ -239,6 +243,7 @@ namespace hooks
   //! The parameters for the filesystem_setup hook
   using filesystem_setup_parameters = parameters<const char *>;
   /*! Kernel test hook setting up a workspace directory for the test to run inside and deleting it after.
+
   The working directory on first instantiation is assumed to be the correct place to put test workspaces
   each of which will be named after the unique thread id of the calling thread.
   The source of the workspace templates comes from `workspace_template_path()` which in turn derives from
@@ -253,17 +258,116 @@ namespace hooks
   */
   template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
 
-  using filesystem_comparison_inexact_parameters = parameters<const char *>;
-  struct filesystem_comparison_inexact_hook
+  namespace filesystem_comparison_impl
   {
-    const char *workspacebase;
-    template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
+    //! Walk a directory hierarchy, depth first. f(directory_entry) can return something to early exit.
+    template <class U> inline auto depth_first_walk(stl1z::filesystem::path path, U &&f) -> decltype(f(std::declval<stl1z::filesystem::directory_entry>()))
     {
-      // todo
-      return 0;
+      for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
+      {
+        if(stl1z::filesystem::is_directory(it->status()))
+        {
+          auto ret(_walk(it->path(), std::forward<U>(f)));
+          if(ret)
+            return ret;
+        }
+      }
+      for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
+      {
+        if(!stl1z::filesystem::is_directory(it->status()))
+        {
+          auto ret(f(*it));
+          if(ret)
+            return ret;
+        }
+      }
+      // Return default constructed edition of the type returned by the callable
+      return decltype(f(std::declval<stl1z::filesystem::directory_entry>()))();
     }
-  };
-  constexpr inline auto filesystem_comparison_inexact(const char *workspacebase) { return filesystem_comparison_inexact_hook{workspacebase}; }
+    /*! Compare two directories for equivalence, returning empty result if identical, else
+    path of first differing item.
+    */
+    template <bool compare_contents, bool compare_timestamps> result<stl1z::filesystem::path> _compare_directories(stl1z::filesystem::path before, stl1z::filesystem::path after)
+    {
+      // Make list of everything in after
+      std::unordered_map<stl1z::filesystem::path, stl1z::filesystem::directory_entry, path_hasher> after_items;
+      depth_first_walk(after, [&](stl1z::filesystem::directory_entry dirent) -> int {
+        after_items[dirent.path()] = std::move(dirent);
+        return 0;
+      });
+
+      // We need to remove each item as we check, if anything remains we fail
+      result<stl1z::filesystem::path> ret = depth_first_walk(before, [&](stl1z::filesystem::directory_entry dirent) -> result<stl1z::filesystem::path> {
+        stl1z::filesystem::path leafpath(dirent.path().native().substr(_current.native().size() + 1));
+        stl1z::filesystem::path afterpath(after / leafpath);
+        if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
+          goto differs;
+        {
+          auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
+          if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
+            goto differs;
+          if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
+            goto differs;
+          if(compare_timestamps)
+          {
+            todo;
+          }
+        }
+        if(compare_contents)
+        {
+          todo;
+        }
+        // This item is identical
+        after_items.erase(afterpath);
+        return make_empty_result<stl1z::filesystem::path>();
+      differs:
+        return leafpath;
+      });
+      // If anything different, return that
+      if(ret)
+        return ret;
+      // If anything in after not in current, return that
+      if(!after_items.empty())
+        return after_items.begin()->first;
+      // Otherwise both current and after are identical
+      return make_empty_result<stl1z::filesystem::path>();
+    }
+
+    template <class Parent, class RetType> struct structure_impl
+    {
+      Parent *parent;
+      RetType &testret;
+      size_t idx;
+      stl1z::filesystem::path model_workspace;
+      ~structure_impl()
+      {
+        if(testret)
+        {
+          // todo
+        }
+      }
+    };
+    struct structure_inst
+    {
+      const char *workspacebase;
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return structure_impl<Parent, RetType>{parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace}; }
+    };
+  }
+  //! The parameters for the filesystem_comparison_structure hook
+  using filesystem_comparison_structure_parameters = parameters<const char *>;
+  /*! Kernel test hook comparing the structure of the test kernel workspace after the test to a workspace template.
+
+  This is the fastest method of filesystem comparison. The following differences are ignored:
+   * Timestamps
+   * Security and ACLs
+   * File contents (but size is not ignored)
+
+  \return A type which when called records the outcome for the test, and on destruction if the outcome
+  is not errored compares the test's workspace with a model workspace template. If they do not
+  match, the outcome is set to an appropriate errored state.
+  \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
+  */
+  constexpr inline auto filesystem_comparison_structure(const char *workspacebase) { return filesystem_comparison_impl::structure_inst{workspacebase}; }
 
 #if 0
 
