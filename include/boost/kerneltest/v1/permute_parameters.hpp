@@ -244,8 +244,8 @@ namespace detail
       template <bool first, class T, class... Types> static void _do(T &&v, Types &&... vs)
       {
         if(!first)
-          std::cout << ", ";
-        std::cout << v;
+          BOOST_KERNELTEST_COUT(", ");
+        BOOST_KERNELTEST_COUT(v);
         _do<false>(std::forward<Types>(vs)...);
       };
 
@@ -263,14 +263,14 @@ namespace detail
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      std::cout << "  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal << "kernel(";
+      BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal << "kernel(");
       auto parameter_sequence_item_it = _sequence.begin();
       std::advance(parameter_sequence_item_it, idx);
       const auto &pars = std::get<1>(*parameter_sequence_item_it);
       using pars_type = typename std::decay<decltype(pars)>::type;
       detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
-      std::cout << ")\n";
-      std::cout << "    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl;
+      BOOST_KERNELTEST_COUT(")\n");
+      BOOST_KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
     }
@@ -290,7 +290,7 @@ namespace detail
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &) const
     {
       using namespace boost_lite::console_colours;
-      std::cout << bold << green << result << normal << std::endl;
+      BOOST_KERNELTEST_COUT(bold << green << result << normal << std::endl);
       _f(result, shouldbe);
       return true;
     }

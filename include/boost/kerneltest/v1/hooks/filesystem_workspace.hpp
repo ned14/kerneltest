@@ -32,22 +32,47 @@ namespace hooks
       return stl1z::filesystem::path();
     }
 
+    struct library_directory_storage
+    {
+      std::unique_lock<std::mutex> lock;
+      stl1z::filesystem::path &path;
+      library_directory_storage(std::unique_lock<std::mutex> &&_lock, stl1z::filesystem::path &_path)
+          : lock(std::move(_lock))
+          , path(_path)
+      {
+      }
+    };
+    /*! You can override the library directory chosen by calling library_directory(product)
+    and then call this function, setting library_directory_storage.path to the new directory.
+    Note that library_directory_storage holds a mutex to the directory storage and will
+    therefore deadlock all other users until it is destroyed.
+    */
+    inline library_directory_storage override_library_directory()
+    {
+      static std::mutex lock;
+      static stl1z::filesystem::path ret;
+      return library_directory_storage(std::unique_lock<std::mutex>(lock), ret);
+    }
     /*! Figure out an absolute path to the base of the product's directory
     and cache it for later fast returns. Changing the product from the
     cached value will recalculate the path.
+
+    The environment variable BOOST_KERNELTEST_product_HOME is first checked,
+    only if it doesn't exist the working directory is checked for a directory
+    called product and every directory up the hierarchy until the root of the
+    drive.
+    \tparam is_throwing If true, throw exceptions for any errors encountered,
+    else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+    process.
     */
     template <bool is_throwing = false> inline stl1z::filesystem::path library_directory(const char *__product = current_test_kernel.product) noexcept(!is_throwing)
     {
       try
       {
-        static std::mutex lock;
         static std::string product;
-        static stl1z::filesystem::path ret;
+        auto ret = override_library_directory();
         if(__product == product)
-          return ret;
-        std::lock_guard<decltype(lock)> h(lock);
-        if(__product == product)
-          return ret;
+          return ret.path;
         stl1z::filesystem::path library_dir = starting_path();
 
         // Is there an environment variable BOOST_KERNELTEST_product_HOME?
@@ -63,9 +88,9 @@ namespace hooks
 #endif
         if(env)
         {
-          ret.assign(env);
+          ret.path.assign(env);
           product = _product;
-          return ret;
+          return ret.path;
         }
 
         // If no environment variable, start searching from the current working directory
@@ -77,9 +102,9 @@ namespace hooks
           temp = _has_product(library_dir, _product);
           if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
           {
-            ret = temp;
+            ret.path = temp;
             product = _product;
-            return ret;
+            return ret.path;
           }
           library_dir = stl1z::filesystem::canonical(library_dir / "..");
         } while(library_dir.native().size() > 3);
@@ -87,23 +112,29 @@ namespace hooks
           throw std::runtime_error("Couldn't figure out where the product lives");
         else
         {
-          std::cerr << "FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl;
+          BOOST_KERNELTEST_CERR("FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl);
           std::terminate();
         }
-        return ret;
       }
       catch(...)
       {
         if(!is_throwing)
         {
-          std::cerr << "library_directory() unexpectedly failed" << std::endl;
+          BOOST_KERNELTEST_CERR("library_directory() unexpectedly failed" << std::endl);
           std::terminate();
         }
         throw;
       }
     }
 
-    //! Figure out an absolute path to the correct test workspace template
+    /*! Figure out an absolute path to the correct test workspace template. Uses
+    library_directory() for the base of the product and assumes any test workspace
+    templates live in product/test/tests.
+
+    \tparam is_throwing If true, throw exceptions for any errors encountered,
+    else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+    process.
+    */
     template <bool is_throwing = false> inline stl1z::filesystem::path workspace_template_path(const stl1z::filesystem::path &workspace) noexcept(!is_throwing)
     {
       try
@@ -117,7 +148,7 @@ namespace hooks
           throw std::runtime_error("Couldn't figure out where the test workspace templates live");
         else
         {
-          std::cerr << "FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl;
+          BOOST_KERNELTEST_CERR("FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl);
           std::terminate();
         }
       }
@@ -125,7 +156,7 @@ namespace hooks
       {
         if(!is_throwing)
         {
-          std::cerr << "workspace_template_path() unexpectedly failed" << std::endl;
+          BOOST_KERNELTEST_CERR("workspace_template_path() unexpectedly failed" << std::endl);
           std::terminate();
         }
         throw;
@@ -149,7 +180,7 @@ namespace hooks
         } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
         if(is_throwing)
           throw std::runtime_error("Couldn't delete workspace after five seconds of trying");
-        std::cerr << "FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl;
+        BOOST_KERNELTEST_CERR("FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
         std::terminate();
       }
 
@@ -165,7 +196,7 @@ namespace hooks
         auto fatalexit = [&] {
           if(is_throwing)
             throw stl1z::fs_system_error(ec);
-          std::cerr << "FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl;
+          BOOST_KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
           std::terminate();
         };
         // Is the input workspace no workspace? In which case create an empty directory
@@ -192,8 +223,12 @@ namespace hooks
         }
         // Set the working directory to the newly configured workspace
         stl1z::filesystem::current_path(_current);
+        current_test_kernel.working_directory = &_current;
       }
-      ~impl() noexcept(!is_throwing) {}
+      ~impl() noexcept(!is_throwing)
+      {
+        // todo
+      }
     };
     template <bool is_throwing> struct inst
     {
@@ -204,9 +239,17 @@ namespace hooks
   //! The parameters for the filesystem_setup hook
   using filesystem_setup_parameters = parameters<const char *>;
   /*! Kernel test hook setting up a workspace directory for the test to run inside and deleting it after.
-  The working directory on first instantiation is assumed to be the correct place to put test workspaces.
-  \return A type which when called configures the workspace and on destruction deletes it
-  \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from
+  The working directory on first instantiation is assumed to be the correct place to put test workspaces
+  each of which will be named after the unique thread id of the calling thread.
+  The source of the workspace templates comes from `workspace_template_path()` which in turn derives from
+  `library_directory()`.
+  \tparam is_throwing If true, throw exceptions for any errors encountered,
+  else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+  process.
+  \return A type which when called configures the workspace and changes the working directory to that
+  workspace, and on destruction deletes the workspace and changes the working directory back to `starting_path()`.
+  `current_test_kernel.working_directory` is also set to the working directory.
+  \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
   */
   template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
 

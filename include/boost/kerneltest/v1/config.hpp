@@ -235,7 +235,18 @@ template <size_t N, class T> using parameters_element = boost_lite::aggregate_tu
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
 
+#if !defined(BOOST_KERNELTEST_COUT) && !defined(BOOST_KERNELTEST_CERR)
+#include <iostream>
+#endif
+
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+
+#ifndef BOOST_KERNELTEST_COUT
+#define BOOST_KERNELTEST_COUT(...) std::cout << __VA_ARGS__
+#endif
+#ifndef BOOST_KERNELTEST_CERR
+#define BOOST_KERNELTEST_CERR(...) std::cerr << __VA_ARGS__
+#endif
 
 //! Many <filesystem> TS implementations are not implementing std::hash for filesystem::path
 struct path_hasher
@@ -246,11 +257,13 @@ struct path_hasher
 //! Keeps what the current test kernel is for the calling thread
 static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
 {
-  const char *category;
-  const char *product;
-  const char *test;
-  const char *name;
-  const char *description;
+  const char *category;     //!< The category of the current test kernel
+  const char *product;      //!< The product of the current test kernel
+  const char *test;         //!< The current test kernel
+  const char *name;         //!< The name of the test within the current test kernel
+  const char *description;  //!< The human readable description of the test
+  //! The working directory for the calling thread, if any (see hooks::filesystem_setup).
+  const stl1z::filesystem::path *working_directory;
 } current_test_kernel;
 
 BOOST_KERNELTEST_V1_NAMESPACE_END

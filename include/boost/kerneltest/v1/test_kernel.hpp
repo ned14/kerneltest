@@ -32,12 +32,16 @@ current_test_kernel.test=#_test; \
 current_test_kernel.name=#_name; \
 current_test_kernel.description=_desc; \
     \
-std::cout                                                                                                                                                                                                                                                                                                                      \
-    << "\n\n"                                                                                                                                                                                                                                                                                                                  \
+BOOST_KERNELTEST_COUT("\n\n"                                                                                                                                                                                                                                                                                                                  \
     << boost_lite::console_colours::bold << boost_lite::console_colours::blue << #_category "/" #_product "/" #_test "/" #_name ":\n"                                                                                                                                  \
-    << boost_lite::console_colours::bold << boost_lite::console_colours::white << _desc << boost_lite::console_colours::normal << std::endl;                                                                                                                                                                                                                        \
+    << boost_lite::console_colours::bold << boost_lite::console_colours::white << _desc << boost_lite::console_colours::normal << std::endl);                                                                                                                                                                                                                        \
     \
 __VA_ARGS__;                                                                                                                                                                                                                                                                                                                   \
+current_test_kernel.category=nullptr; \
+current_test_kernel.product=nullptr; \
+current_test_kernel.test=nullptr; \
+current_test_kernel.name=nullptr; \
+current_test_kernel.description=nullptr; \
   }
 // clang-format on
 
