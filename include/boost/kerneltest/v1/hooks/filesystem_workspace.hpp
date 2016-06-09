@@ -287,41 +287,65 @@ namespace hooks
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
-    template <bool compare_contents, bool compare_timestamps> result<stl1z::filesystem::path> _compare_directories(stl1z::filesystem::path before, stl1z::filesystem::path after)
+    template <bool compare_contents, bool compare_timestamps> result<stl1z::filesystem::path> compare_directories(stl1z::filesystem::path before, stl1z::filesystem::path after) noexcept
     {
-      // Make list of everything in after
-      std::unordered_map<stl1z::filesystem::path, stl1z::filesystem::directory_entry, path_hasher> after_items;
-      depth_first_walk(after, [&](stl1z::filesystem::directory_entry dirent) -> int {
-        after_items[dirent.path()] = std::move(dirent);
-        return 0;
-      });
+      try
+      {
+        // Make list of everything in after
+        std::unordered_map<stl1z::filesystem::path, stl1z::filesystem::directory_entry, path_hasher> after_items;
+        depth_first_walk(after, [&](stl1z::filesystem::directory_entry dirent) -> int {
+          after_items[dirent.path()] = std::move(dirent);
+          return 0;
+        });
 
-      // We need to remove each item as we check, if anything remains we fail
-      result<stl1z::filesystem::path> ret = depth_first_walk(before, [&](stl1z::filesystem::directory_entry dirent) -> result<stl1z::filesystem::path> {
-        stl1z::filesystem::path leafpath(dirent.path().native().substr(_current.native().size() + 1));
-        stl1z::filesystem::path afterpath(after / leafpath);
-        if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
-          goto differs;
-        {
-          auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
-          if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
-            goto differs;
-          if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
-            goto differs;
-          if(compare_timestamps)
+        // We need to remove each item as we check, if anything remains we fail
+        result<stl1z::filesystem::path> ret = depth_first_walk(before, [&](stl1z::filesystem::directory_entry dirent) -> result<stl1z::filesystem::path> {
+          stl1z::filesystem::path leafpath(dirent.path().native().substr(_current.native().size() + 1));
+          stl1z::filesystem::path afterpath(after / leafpath);
+          if(stl1z::filesystem::is_symlink(dirent.symlink_status()))
           {
-            todo;
+            if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
+              goto differs;
+            if(stl1z::filesystem::read_symlink(dirent.path()) != stl1z::filesystem::read_symlink(afterpath))
+              goto differs;
           }
+          {
+            auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
+            if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
+              goto differs;
+            if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
+              goto differs;
+            if(stl1z::filesystem::file_size(dirent.path()) != stl1z::filesystem::file_size(afterpath))
+              goto differs;
+            if(compare_timestamps)
+            {
+              if(beforestatus.permissions() != afterstatus.permissions())
+                goto differs;
+              if(stl1z::filesystem::last_write_time(dirent.path()) != stl1z::filesystem::last_write_time(afterpath))
+                goto differs;
+            }
+          }
+          if(compare_contents)
+          {
+            std::ifstream beforeh(dirent.path()), afterh(afterpath);
+            char beforeb[16384], afterb[16384];
+            do
+            {
+              size_t readb = beforeh.read(beforeb, sizeof(beforeb));
+              size_t reada = afterh.read(afterb, sizeof(afterb));
+              if(readb != reada)
+                goto differs;
+              if(memcmp(beforeb, afterb, reada))
+                goto differs;
+            } while(beforeh.good() && afterh.good());
+          }
+          // This item is identical
+          after_items.erase(afterpath);
+          return make_empty_result<stl1z::filesystem::path>();
+        differs:
+          return leafpath;
         }
-        if(compare_contents)
-        {
-          todo;
-        }
-        // This item is identical
-        after_items.erase(afterpath);
-        return make_empty_result<stl1z::filesystem::path>();
-      differs:
-        return leafpath;
+        BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
       });
       // If anything different, return that
       if(ret)
@@ -341,9 +365,23 @@ namespace hooks
       stl1z::filesystem::path model_workspace;
       ~structure_impl()
       {
+        if(!current_test_kernel.working_directory)
+        {
+          BOOST_KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
+          std::terminate();
+        }
+        // Only do comparison if test passed
         if(testret)
         {
-          // todo
+          // If this is empty, workspaces are identical
+          result<stl1z::filesystem::path> workspaces_not_identical = compare_directories<false, false>(*current_test_kernel.working_directory, model_workspace);
+          // Propagate any error
+          if(workspaces_not_identical.has_error())
+            testret = workspaces_not_identical.get_error();  // FIXME Needs to be custom error code
+          else if(workspaces_not_identical.has_value())
+          {
+            // todo custom error category
+          }
         }
       }
     };

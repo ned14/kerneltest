@@ -143,10 +143,12 @@ File Created: Apr 2016
 #define BOOST_STL1z_FILESYSTEM_MAP_NO_UNIQUE_PATH
 
 #include "../boost-lite/include/bind/stl11/std/atomic"
+#include "../boost-lite/include/bind/stl11/std/system_error"
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace stl11
 {
   using namespace boost_lite::bind::std::atomic;
+  using namespace boost_lite::bind::std::system_error;
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #if BOOST_OUTCOME_USE_BOOST_THREAD
@@ -241,9 +243,11 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
+//! Lets you redefine where cout is sent
 #ifndef BOOST_KERNELTEST_COUT
 #define BOOST_KERNELTEST_COUT(...) std::cout << __VA_ARGS__
 #endif
+//! Lets you redefine where cerr is sent
 #ifndef BOOST_KERNELTEST_CERR
 #define BOOST_KERNELTEST_CERR(...) std::cerr << __VA_ARGS__
 #endif
@@ -265,6 +269,65 @@ static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
   //! The working directory for the calling thread, if any (see hooks::filesystem_setup).
   const stl1z::filesystem::path *working_directory;
 } current_test_kernel;
+
+//! \brief Enumeration of the ways in which a kernel test may fail
+enum class kerneltest_errc
+{
+  filesystem_setup_internal_failure = 1,   //!< hooks::filesystem_setup failed during setup or teardown
+  filesystem_comparison_internal_failure,  //!< hooks::filesystem_comparison failed during setup or teardown
+  filesystem_comparison_failed,            //!< hooks::filesystem_comparison found workspaces differed
+};
+
+class kerneltest_category : public stl11::error_category
+{
+public:
+  virtual const char *name() const noexcept { return "basic_monad"; }
+  virtual std::string message(int c) const
+  {
+    switch(c)
+    {
+    case 1:
+      return "already set";
+    case 2:
+      return "no state";
+    case 3:
+      return "exception present";
+    default:
+      return "unknown";
+    }
+  }
+};
+
+/*! \brief Returns a reference to a monad error category. Note the address
+of one of these may not be constant throughout the process as per the ISO spec.
+\ingroup monad
+*/
+inline const _detail::monad_category &monad_category()
+{
+  static _detail::monad_category c;
+  return c;
+}
+
+//! \brief A monad exception object \ingroup monad
+class BOOST_SYMBOL_VISIBLE monad_error : public std::logic_error
+{
+  stl11::error_code _ec;
+
+public:
+  monad_error(stl11::error_code ec)
+      : std::logic_error(ec.message())
+      , _ec(std::move(ec))
+  {
+  }
+  const stl11::error_code &code() const noexcept { return _ec; }
+};
+
+//! \brief ADL looked up by the STL to convert a monad_errc into an error_code. \ingroup monad
+inline stl11::error_code make_error_code(monad_errc e)
+{
+  return stl11::error_code(static_cast<int>(e), monad_category());
+}
+
 
 BOOST_KERNELTEST_V1_NAMESPACE_END
 
