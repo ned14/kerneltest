@@ -67,7 +67,7 @@ namespace hooks
     else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline stl1z::filesystem::path library_directory(const char *__product = current_test_kernel.product) noexcept(!is_throwing)
+    template <bool is_throwing = false> inline stl1z::filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
     {
       try
       {
@@ -80,6 +80,10 @@ namespace hooks
         // Is there an environment variable BOOST_KERNELTEST_product_HOME?
         std::string _product(__product);
         std::string envkey("BOOST_KERNELTEST_" + boost_lite::algorithm::string::toupper(_product) + "_HOME");
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4996)  // Stupid deprecation warning
+#endif
 #ifdef _UNICODE
         std::wstring _envkey;
         for(auto &i : envkey)
@@ -87,6 +91,9 @@ namespace hooks
         auto env = _wgetenv(_envkey.c_str());
 #else
         auto env = getenv(envkey.c_str());
+#endif
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
         if(env)
         {
@@ -125,7 +132,8 @@ namespace hooks
           BOOST_KERNELTEST_CERR("library_directory() unexpectedly failed" << std::endl);
           std::terminate();
         }
-        throw;
+        else
+          throw;
       }
     }
 
@@ -137,7 +145,7 @@ namespace hooks
     else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline stl1z::filesystem::path workspace_template_path(const stl1z::filesystem::path &workspace) noexcept(!is_throwing)
+    template <bool is_throwing = false> inline stl1z::filesystem::path workspace_template_path(const stl1z::filesystem::path &workspace)  // noexcept(!is_throwing)
     {
       try
       {
@@ -161,7 +169,8 @@ namespace hooks
           BOOST_KERNELTEST_CERR("workspace_template_path() unexpectedly failed" << std::endl);
           std::terminate();
         }
-        throw;
+        else
+          throw;
       }
     }
 
@@ -169,7 +178,7 @@ namespace hooks
     {
       stl1z::filesystem::path _current;
 
-      void _remove_workspace() noexcept(!is_throwing)
+      void _remove_workspace()  // noexcept(!is_throwing)
       {
         stl1z::fs_error_code ec;
         auto begin = stl11::chrono::steady_clock::now();
@@ -186,7 +195,7 @@ namespace hooks
         std::terminate();
       }
 
-      impl(Parent *parent, RetType &testret, size_t idx, stl1z::filesystem::path &&workspace) noexcept(!is_throwing)
+      impl(Parent *, RetType &, size_t, stl1z::filesystem::path &&workspace)  // noexcept(!is_throwing)
       {
         auto template_path = workspace_template_path<is_throwing>(workspace);
         // Make the workspace we choose unique to this thread
