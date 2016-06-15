@@ -267,7 +267,7 @@ namespace hooks
       {
         if(stl1z::filesystem::is_directory(it->status()))
         {
-          auto ret(_walk(it->path(), std::forward<U>(f)));
+          auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
           if(ret)
             return ret;
         }
@@ -300,61 +300,63 @@ namespace hooks
 
         // We need to remove each item as we check, if anything remains we fail
         result<stl1z::filesystem::path> ret = depth_first_walk(before, [&](stl1z::filesystem::directory_entry dirent) -> result<stl1z::filesystem::path> {
-          stl1z::filesystem::path leafpath(dirent.path().native().substr(_current.native().size() + 1));
-          stl1z::filesystem::path afterpath(after / leafpath);
-          if(stl1z::filesystem::is_symlink(dirent.symlink_status()))
+          try
           {
-            if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
-              goto differs;
-            if(stl1z::filesystem::read_symlink(dirent.path()) != stl1z::filesystem::read_symlink(afterpath))
-              goto differs;
-          }
-          {
-            auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
-            if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
-              goto differs;
-            if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
-              goto differs;
-            if(stl1z::filesystem::file_size(dirent.path()) != stl1z::filesystem::file_size(afterpath))
-              goto differs;
-            if(compare_timestamps)
+            stl1z::filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
+            stl1z::filesystem::path afterpath(after / leafpath);
+            if(stl1z::filesystem::is_symlink(dirent.symlink_status()))
             {
-              if(beforestatus.permissions() != afterstatus.permissions())
+              if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
                 goto differs;
-              if(stl1z::filesystem::last_write_time(dirent.path()) != stl1z::filesystem::last_write_time(afterpath))
+              if(stl1z::filesystem::read_symlink(dirent.path()) != stl1z::filesystem::read_symlink(afterpath))
                 goto differs;
             }
-          }
-          if(compare_contents)
-          {
-            std::ifstream beforeh(dirent.path()), afterh(afterpath);
-            char beforeb[16384], afterb[16384];
-            do
             {
-              size_t readb = beforeh.read(beforeb, sizeof(beforeb));
-              size_t reada = afterh.read(afterb, sizeof(afterb));
-              if(readb != reada)
+              auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
+              if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
                 goto differs;
-              if(memcmp(beforeb, afterb, reada))
+              if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
                 goto differs;
-            } while(beforeh.good() && afterh.good());
+              if(stl1z::filesystem::file_size(dirent.path()) != stl1z::filesystem::file_size(afterpath))
+                goto differs;
+              if(compare_timestamps)
+              {
+                if(beforestatus.permissions() != afterstatus.permissions())
+                  goto differs;
+                if(stl1z::filesystem::last_write_time(dirent.path()) != stl1z::filesystem::last_write_time(afterpath))
+                  goto differs;
+              }
+            }
+            if(compare_contents)
+            {
+              std::ifstream beforeh(dirent.path()), afterh(afterpath);
+              char beforeb[16384], afterb[16384];
+              do
+              {
+                beforeh.read(beforeb, sizeof(beforeb));
+                afterh.read(afterb, sizeof(afterb));
+                if(memcmp(beforeb, afterb, sizeof(afterb)))
+                  goto differs;
+              } while(beforeh.good() && afterh.good());
+            }
+            // This item is identical
+            after_items.erase(afterpath);
+            return make_empty_result<stl1z::filesystem::path>();
+          differs:
+            return leafpath;
           }
-          // This item is identical
-          after_items.erase(afterpath);
-          return make_empty_result<stl1z::filesystem::path>();
-        differs:
-          return leafpath;
-        }
-        BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
-      });
-      // If anything different, return that
-      if(ret)
-        return ret;
-      // If anything in after not in current, return that
-      if(!after_items.empty())
-        return after_items.begin()->first;
-      // Otherwise both current and after are identical
-      return make_empty_result<stl1z::filesystem::path>();
+          BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
+        });
+        // If anything different, return that
+        if(ret)
+          return ret;
+        // If anything in after not in current, return that
+        if(!after_items.empty())
+          return after_items.begin()->first;
+        // Otherwise both current and after are identical
+        return make_empty_result<stl1z::filesystem::path>();
+      }
+      BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
     }
 
     template <class Parent, class RetType> struct structure_impl
@@ -377,11 +379,10 @@ namespace hooks
           result<stl1z::filesystem::path> workspaces_not_identical = compare_directories<false, false>(*current_test_kernel.working_directory, model_workspace);
           // Propagate any error
           if(workspaces_not_identical.has_error())
-            testret = workspaces_not_identical.get_error();  // FIXME Needs to be custom error code
+            testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.get_error().message().c_str(), workspaces_not_identical.get_error().value());
+          // Set error with extended message of the path which differs
           else if(workspaces_not_identical.has_value())
-          {
-            // todo custom error category
-          }
+            testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.get().string().c_str());
         }
       }
     };

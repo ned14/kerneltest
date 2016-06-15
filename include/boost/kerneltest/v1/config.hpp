@@ -270,62 +270,61 @@ static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
   const stl1z::filesystem::path *working_directory;
 } current_test_kernel;
 
+
 //! \brief Enumeration of the ways in which a kernel test may fail
 enum class kerneltest_errc
 {
   filesystem_setup_internal_failure = 1,   //!< hooks::filesystem_setup failed during setup or teardown
   filesystem_comparison_internal_failure,  //!< hooks::filesystem_comparison failed during setup or teardown
-  filesystem_comparison_failed,            //!< hooks::filesystem_comparison found workspaces differed
+  filesystem_comparison_failed             //!< hooks::filesystem_comparison found workspaces differed
 };
 
-class kerneltest_category : public stl11::error_category
+namespace detail
 {
-public:
-  virtual const char *name() const noexcept { return "basic_monad"; }
-  virtual std::string message(int c) const
+  class kerneltest_category : public stl11::error_category
   {
-    switch(c)
+  public:
+    virtual const char *name() const noexcept { return "kerneltest"; }
+    virtual std::string message(int c) const
     {
-    case 1:
-      return "already set";
-    case 2:
-      return "no state";
-    case 3:
-      return "exception present";
-    default:
-      return "unknown";
+      switch(c)
+      {
+      case 1:
+        return "filesystem_setup internal failure";
+      case 2:
+        return "filesystem_comparison internal failure";
+      case 3:
+        return "filesystem comparison failed";
+      default:
+        return "unknown";
+      }
     }
-  }
-};
+  };
+}
 
-/*! \brief Returns a reference to a monad error category. Note the address
+/*! \brief Returns a reference to a kerneltest error category. Note the address
 of one of these may not be constant throughout the process as per the ISO spec.
-\ingroup monad
 */
-inline const _detail::monad_category &monad_category()
+inline const detail::kerneltest_category &kerneltest_category()
 {
-  static _detail::monad_category c;
+  static detail::kerneltest_category c;
   return c;
 }
 
-//! \brief A monad exception object \ingroup monad
-class BOOST_SYMBOL_VISIBLE monad_error : public std::logic_error
+//! \brief A kerneltest error object
+class BOOST_SYMBOL_VISIBLE kerneltest_error : public std::system_error
 {
-  stl11::error_code _ec;
-
 public:
-  monad_error(stl11::error_code ec)
-      : std::logic_error(ec.message())
-      , _ec(std::move(ec))
+  kerneltest_error(stl11::error_code ec)
+      : std::system_error(ec)
   {
   }
-  const stl11::error_code &code() const noexcept { return _ec; }
 };
 
-//! \brief ADL looked up by the STL to convert a monad_errc into an error_code. \ingroup monad
-inline stl11::error_code make_error_code(monad_errc e)
+//! \brief ADL looked up by the STL to convert a kerneltest_errc into an error_code.
+inline stl11::error_code make_error_code(kerneltest_errc e)
 {
-  return stl11::error_code(static_cast<int>(e), monad_category());
+  return stl11::error_code(static_cast<int>(e), kerneltest_category());
 }
 
 
