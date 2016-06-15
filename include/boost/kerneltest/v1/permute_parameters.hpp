@@ -46,6 +46,9 @@ namespace detail
   {
     // callspec is (parameter_permuter<...> *parent, outcome<T> &testret, size_t, pars)
     // pars<0> is expected outcome, pars<1> is kernel parameter set. pars<2> onwards are the hook parameters
+
+    // FIXME: Can't simply make_tuple because can't guarantee order of initialisation, so need
+    // to force sequential construction somehow
     return std::make_tuple(instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...);
   }
 
