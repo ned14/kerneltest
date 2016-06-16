@@ -154,6 +154,12 @@ namespace hooks
         {
           return library_dir / "test" / "tests" / workspace;
         }
+        // The final directory is allowed to not exist
+        auto workspace2 = workspace.parent_path();
+        if(stl1z::filesystem::exists(library_dir / "test" / "tests" / workspace2))
+        {
+          return library_dir / "test" / "tests" / workspace;
+        }
         if(is_throwing)
           throw std::runtime_error("Couldn't figure out where the test workspace templates live");
         else
@@ -234,13 +240,18 @@ namespace hooks
         }
         // Set the working directory to the newly configured workspace
         stl1z::filesystem::current_path(_current);
-        current_test_kernel.working_directory = &_current;
+        current_test_kernel.working_directory = _current.c_str();
       }
+      constexpr impl(impl &&) noexcept = default;
+      impl(const impl &) = delete;
       ~impl() noexcept(!is_throwing)
       {
-        current_test_kernel.working_directory = nullptr;
-        stl1z::filesystem::current_path(starting_path());
-        _remove_workspace();
+        if(!_current.empty())
+        {
+          current_test_kernel.working_directory = nullptr;
+          stl1z::filesystem::current_path(starting_path());
+          _remove_workspace();
+        }
       }
     };
     template <bool is_throwing> struct inst
@@ -374,31 +385,43 @@ namespace hooks
       RetType &testret;
       size_t idx;
       stl1z::filesystem::path model_workspace;
+      structure_impl(Parent *_parent, RetType &_testret, size_t _idx, const char *workspacebase, const char *workspace)
+          : parent(_parent)
+          , testret(_testret)
+          , idx(_idx)
+          , model_workspace(filesystem_setup_impl::workspace_template_path(stl1z::filesystem::path(workspacebase) / workspace))
+      {
+      }
+      structure_impl(structure_impl &&) noexcept = default;
+      structure_impl(const structure_impl &) = delete;
       ~structure_impl()
       {
-        if(!current_test_kernel.working_directory)
+        if(!model_workspace.empty())
         {
-          BOOST_KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
-          std::terminate();
-        }
-        // Only do comparison if test passed
-        if(testret)
-        {
-          // If this is empty, workspaces are identical
-          result<stl1z::filesystem::path> workspaces_not_identical = compare_directories<false, false>(*current_test_kernel.working_directory, model_workspace);
-          // Propagate any error
-          if(workspaces_not_identical.has_error())
-            testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.get_error().message().c_str(), workspaces_not_identical.get_error().value());
-          // Set error with extended message of the path which differs
-          else if(workspaces_not_identical.has_value())
-            testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.get().string().c_str());
+          if(!current_test_kernel.working_directory)
+          {
+            BOOST_KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
+            std::terminate();
+          }
+          // Only do comparison if test passed
+          if(testret)
+          {
+            // If this is empty, workspaces are identical
+            result<stl1z::filesystem::path> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
+            // Propagate any error
+            if(workspaces_not_identical.has_error())
+              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.get_error().message().c_str(), workspaces_not_identical.get_error().value());
+            // Set error with extended message of the path which differs
+            else if(workspaces_not_identical.has_value())
+              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.get().string().c_str());
+          }
         }
       }
     };
     struct structure_inst
     {
       const char *workspacebase;
-      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return structure_impl<Parent, RetType>{parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace}; }
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return structure_impl<Parent, RetType>(parent, testret, idx, workspacebase, workspace); }
     };
   }
   //! The parameters for the filesystem_comparison_structure hook

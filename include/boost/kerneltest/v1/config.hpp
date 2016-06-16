@@ -267,7 +267,7 @@ static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
   const char *name;         //!< The name of the test within the current test kernel
   const char *description;  //!< The human readable description of the test
   //! The working directory for the calling thread, if any (see hooks::filesystem_setup).
-  const stl1z::filesystem::path *working_directory;
+  const stl1z::filesystem::path::value_type *working_directory;
 } current_test_kernel;
 
 

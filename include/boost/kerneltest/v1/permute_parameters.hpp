@@ -41,15 +41,37 @@ namespace detail
     using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
   };
 
+  // Need a tuple whose destruction order is well known. This fellow destructs in
+  // reverse order of Ts...
+  template <class... Ts> struct hooks_container;
+  template <class T, class... Ts> struct hooks_container<T, Ts...>
+  {
+    T _v;
+    hooks_container<Ts...> _vs;
+    constexpr hooks_container(T &&v, Ts &&... vs)
+        : _v(std::move(v))
+        , _vs(std::move(vs)...)
+    {
+    }
+  };
+  template <class T> struct hooks_container<T>
+  {
+    T _v;
+    constexpr hooks_container(T &&v)
+        : _v(std::move(v))
+    {
+    }
+  };
   template <class Hook, class Permuter, class Outcome, class... Types, size_t... Idxs> auto instantiate_hook(Hook &&hook, Permuter *parent, Outcome &out, size_t idx, const std::tuple<Types...> &pars, std::index_sequence<Idxs...>) { return hook(parent, out, idx, std::get<Idxs>(pars)...); }
   template <class... Hooks, class Permuter, class Outcome, class ParamSequence, size_t... Idxs> auto instantiate_hooks(const std::tuple<Hooks...> &hooks, Permuter *parent, Outcome &out, size_t idx, const ParamSequence &pars, std::index_sequence<Idxs...>)
   {
     // callspec is (parameter_permuter<...> *parent, outcome<T> &testret, size_t, pars)
     // pars<0> is expected outcome, pars<1> is kernel parameter set. pars<2> onwards are the hook parameters
-
-    // FIXME: Can't simply make_tuple because can't guarantee order of initialisation, so need
-    // to force sequential construction somehow
-    return std::make_tuple(instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...);
+    //
+    // Cannot use tuple because can't guarantee order of destruction, it varies by
+    // STL implementation
+    return hooks_container<decltype(instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>()))...>{
+    instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...};
   }
 
   template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
