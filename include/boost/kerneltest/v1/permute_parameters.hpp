@@ -13,25 +13,29 @@ File Created: Apr 2016
 #include <array>
 #include <vector>
 
-template <class T> struct print_type
-{
-private:
-  print_type() {}
-};
-
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace detail
 {
-  template <class ParamSequence, bool = boost_lite::type_traits::has_constexpr_size<ParamSequence>()> struct permutation_results_type
+  template <class T> struct has_constant_size
+  {
+    static constexpr bool value = false;
+    static constexpr size_t size = 0;
+  };
+  template <class T, size_t N> struct has_constant_size<std::array<T, N>>
+  {
+    static constexpr bool value = true;
+    static constexpr size_t size = N;
+  };
+  template <class ParamSequence, bool = has_constant_size<ParamSequence>::value> struct permutation_results_type
   {
     template <class T> using type = std::vector<T>;
     constexpr ParamSequence operator()(size_t no) const { return ParamSequence(no); }
   };
   template <class ParamSequence> struct permutation_results_type<ParamSequence, true>
   {
-    template <class T> using type = std::array<T, ParamSequence().size()>;
-    constexpr ParamSequence operator()(size_t no) const { return ParamSequence(); }
+    template <class T> using type = std::array<T, has_constant_size<ParamSequence>::size>;
+    constexpr ParamSequence operator()(size_t) const { return ParamSequence(); }
   };
   template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
 
@@ -135,6 +139,10 @@ public:
   template <size_t N> static constexpr const parameter_type<N> &parameter_value(const parameter_sequence_value_type &v) { return std::get<N + 1>(v); }
   //! The type of the results returned by the call operator. Can be array<> or vector<> depending on ParamSequence
   template <class T> using permutation_results_type = typename _permutation_results_type::template type<T>;
+  //! True if the input for this permuter was constant sized and therefore permutation_results_type is constant sized
+  static constexpr bool permutation_results_type_is_constant_sized = detail::has_constant_size<ParamSequence>::value;
+  //! Any constant size of the permutation_results_type if it is constant sized
+  static constexpr size_t permutation_results_type_constant_size = detail::has_constant_size<ParamSequence>::size;
 
   //! Constructs an instance. Best to use mt_permute_parameters() or st_permute_parameters() instead.
   constexpr parameter_permuter(ParamSequence &&params, std::tuple<Hooks...> &&hooks)
@@ -237,6 +245,7 @@ namespace detail
   template <class OutcomeType, class... Parameters, template <class...> class Container> struct is_parameters_sequence_type_valid<Container<parameters<OutcomeType, Parameters...>>, OutcomeType, Parameters...> : std::true_type
   {
   };
+  template <class T, size_t N, size_t... Idxs> auto array_from_Carray(const T (&seq)[N], std::index_sequence<Idxs...>) { return std::array<T, N>{{seq[Idxs]...}}; }
 }
 
 /*! \brief Create a multithreaded parameter permuter
@@ -251,32 +260,33 @@ template <class OutcomeType, class... Parameters, class Sequence, class... Hooks
   return parameter_permuter<true, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 //! \overload
-template <class... Parameters, class... Hooks> constexpr auto mt_permute_parameters(std::initializer_list<parameters<Parameters...>> seq, Hooks &&... hooks)
+template <class... Parameters, size_t N, class... Hooks> constexpr auto mt_permute_parameters(const parameters<Parameters...> (&seq)[N], Hooks &&... hooks)
 {
-  return parameter_permuter<true, std::initializer_list<parameters<Parameters...>>, Hooks...>(std::move(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
+  // Convert C type arrays into std::array
+  return parameter_permuter<true, std::array<parameters<Parameters...>, N>, Hooks...>(detail::array_from_Carray<parameters<Parameters...>, N>(seq, std::make_index_sequence<N>()), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 
 namespace detail
 {
+  class _print_params
+  {
+    template <bool first> static void _do() {}
+    template <bool first, class T, class... Types> static void _do(T &&v, Types &&... vs)
+    {
+      if(!first)
+        BOOST_KERNELTEST_COUT(", ");
+      BOOST_KERNELTEST_COUT(v);
+      _do<false>(std::forward<Types>(vs)...);
+    };
+
+  public:
+    template <class... Types> void operator()(Types &&... vs) const { _do<true>(std::forward<Types>(vs)...); }
+  };
+
   template <class Sequence, class U> class pretty_print_failure_impl
   {
     const Sequence &_sequence;
     U _f;
-
-    class _print_params
-    {
-      template <bool first> static void _do() {}
-      template <bool first, class T, class... Types> static void _do(T &&v, Types &&... vs)
-      {
-        if(!first)
-          BOOST_KERNELTEST_COUT(", ");
-        BOOST_KERNELTEST_COUT(v);
-        _do<false>(std::forward<Types>(vs)...);
-      };
-
-    public:
-      template <class... Types> void operator()(Types &&... vs) const { _do<true>(std::forward<Types>(vs)...); }
-    };
 
   public:
     template <class V>
@@ -312,10 +322,17 @@ namespace detail
         , _f(std::forward<V>(f))
     {
     }
-    template <class T, class U> bool operator()(size_t idx, const T &result, const U &) const
+    template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      BOOST_KERNELTEST_COUT(bold << green << result << normal << std::endl);
+      BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal << "kernel(");
+      auto parameter_sequence_item_it = _sequence.begin();
+      std::advance(parameter_sequence_item_it, idx);
+      const auto &pars = std::get<1>(*parameter_sequence_item_it);
+      using pars_type = typename std::decay<decltype(pars)>::type;
+      detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
+      BOOST_KERNELTEST_COUT(")\n");
+      BOOST_KERNELTEST_COUT("    " << bold << green << "PASSED" << normal << result << std::endl);
       _f(result, shouldbe);
       return true;
     }
