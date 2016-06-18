@@ -276,7 +276,7 @@ namespace hooks
   `current_test_kernel.working_directory` is also set to the working directory.
   \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
   */
-  template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
+  template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase = current_test_kernel.test) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
 
   namespace filesystem_comparison_impl
   {
@@ -438,7 +438,7 @@ namespace hooks
   match, the outcome is set to an appropriate errored state.
   \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
   */
-  constexpr inline auto filesystem_comparison_structure(const char *workspacebase) { return filesystem_comparison_impl::structure_inst{workspacebase}; }
+  constexpr inline auto filesystem_comparison_structure(const char *workspacebase = current_test_kernel.test) { return filesystem_comparison_impl::structure_inst{workspacebase}; }
 
 #if 0
 
@@ -868,6 +868,12 @@ BOOST_OUTCOME_V1_NAMESPACE_END
 
 #endif
 }
+
+//! Alias hooks to precondition
+namespace precondition = hooks;
+//! Alias hooks to postcondition
+namespace postcondition = hooks;
+
 BOOST_KERNELTEST_V1_NAMESPACE_END
 
 #endif

@@ -282,6 +282,23 @@ namespace detail
   public:
     template <class... Types> void operator()(Types &&... vs) const { _do<true>(std::forward<Types>(vs)...); }
   };
+  template <class Sequence> void pretty_print_preamble(const Sequence &_sequence, size_t idx)
+  {
+    using namespace boost_lite::console_colours;
+    BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal);
+    auto parameter_sequence_item_it = _sequence.begin();
+    std::advance(parameter_sequence_item_it, idx);
+    // Print kernel parameters we called the kernel with
+    {
+      BOOST_KERNELTEST_COUT("kernel(");
+      const auto &pars = std::get<1>(*parameter_sequence_item_it);
+      using pars_type = typename std::decay<decltype(pars)>::type;
+      detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
+      BOOST_KERNELTEST_COUT(")");
+    }
+    // If there are any hooks, print
+    BOOST_KERNELTEST_COUT("\n");
+  }
 
   template <class Sequence, class U> class pretty_print_failure_impl
   {
@@ -298,13 +315,7 @@ namespace detail
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal << "kernel(");
-      auto parameter_sequence_item_it = _sequence.begin();
-      std::advance(parameter_sequence_item_it, idx);
-      const auto &pars = std::get<1>(*parameter_sequence_item_it);
-      using pars_type = typename std::decay<decltype(pars)>::type;
-      detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
-      BOOST_KERNELTEST_COUT(")\n");
+      pretty_print_preamble(_sequence, idx);
       BOOST_KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
@@ -325,20 +336,14 @@ namespace detail
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal << "kernel(");
-      auto parameter_sequence_item_it = _sequence.begin();
-      std::advance(parameter_sequence_item_it, idx);
-      const auto &pars = std::get<1>(*parameter_sequence_item_it);
-      using pars_type = typename std::decay<decltype(pars)>::type;
-      detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
-      BOOST_KERNELTEST_COUT(")\n");
+      pretty_print_preamble(_sequence, idx);
       BOOST_KERNELTEST_COUT("    " << bold << green << "PASSED" << normal << result << std::endl);
       _f(result, shouldbe);
       return true;
     }
   };
 }
-//! Colourfully prints a failed result
+//! Returns a callable which colourfully prints a failed result
 template <class Sequence, class U> detail::pretty_print_failure_impl<Sequence, U> pretty_print_failure(const Sequence &s, U &&f)
 {
   return detail::pretty_print_failure_impl<Sequence, U>(s, std::forward<U>(f));
@@ -348,7 +353,7 @@ template <class Sequence> auto pretty_print_failure(const Sequence &s)
 {
   return pretty_print_failure(s, [](const auto &, const auto &) {});
 }
-//! Colourfully prints a successful result
+//! Returns a callable which colourfully prints a successful result
 template <class Sequence, class U> detail::pretty_print_success_impl<Sequence, U> pretty_print_success(const Sequence &s, U &&f)
 {
   return detail::pretty_print_success_impl<Sequence, U>(s, std::forward<U>(f));
