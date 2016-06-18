@@ -79,6 +79,7 @@ namespace detail
   }
 
   template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
+  template <class U, class... Types, size_t... Idxs> auto call_f_with_tuple(U &&f, const std::tuple<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
 
   template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<T> &shouldbe) { return kernel_outcome == shouldbe; };
   template <class T> bool check_result(const result<T> &kernel_outcome, const result<T> &shouldbe) { return kernel_outcome == shouldbe; };
@@ -125,24 +126,40 @@ public:
   static constexpr bool is_multithreaded = is_mt;
   //! The type of the sequence of parameters
   using parameter_sequence_type = ParamSequence;
+  //! True if the sequence of parameters is constant sized
+  static constexpr bool parameter_sequence_type_is_constant_sized = detail::has_constant_size<ParamSequence>::value;
+  //! Any constant size of the parameter_sequence_type if it is constant sized
+  static constexpr size_t parameter_sequence_type_constant_size = detail::has_constant_size<ParamSequence>::size;
+
   //! The type of an individual parameter set
   using parameter_sequence_value_type = typename parameter_sequence_type::value_type;
   //! The type of the outcome from an individual parameter set
   using outcome_type = typename parameters_element<0, parameter_sequence_value_type>::type;
   //! Accessor for the outcome from an individual parameter set
   static constexpr const outcome_type &outcome_value(const parameter_sequence_value_type &v) { return std::get<0>(v); }
+
   //! The number of parameters in an individual parameter set
   static constexpr size_t parameters_size = BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<parameter_sequence_value_type>::value - 1;
   //! The type of the parameter at index N
   template <size_t N> using parameter_type = typename parameters_element<1 + N, parameter_sequence_value_type>::type;
   //! Accessor for the parameter at index N
   template <size_t N> static constexpr const parameter_type<N> &parameter_value(const parameter_sequence_value_type &v) { return std::get<N + 1>(v); }
+
+  //! The type of the sequence of hooks
+  using hook_sequence_type = std::tuple<Hooks...>;
+  //! The number of hooks
+  static constexpr size_t hook_sequence_size = std::tuple_size<hook_sequence_type>::value;
+  //! The type of the hook at index N
+  template <size_t N> using hook_type = typename std::tuple_element<N, hook_sequence_type>::type;
+  //! Accessor for the hook at index N
+  template <size_t N> static constexpr const hook_type<N> &hook_value(const hook_sequence_type &v) { return std::get<N>(v); }
+
   //! The type of the results returned by the call operator. Can be array<> or vector<> depending on ParamSequence
   template <class T> using permutation_results_type = typename _permutation_results_type::template type<T>;
-  //! True if the input for this permuter was constant sized and therefore permutation_results_type is constant sized
-  static constexpr bool permutation_results_type_is_constant_sized = detail::has_constant_size<ParamSequence>::value;
+  //! True if permutation_results_type is constant sized
+  static constexpr bool permutation_results_type_is_constant_sized = parameter_sequence_type_is_constant_sized;
   //! Any constant size of the permutation_results_type if it is constant sized
-  static constexpr size_t permutation_results_type_constant_size = detail::has_constant_size<ParamSequence>::size;
+  static constexpr size_t permutation_results_type_constant_size = parameter_sequence_type_constant_size;
 
   //! Constructs an instance. Best to use mt_permute_parameters() or st_permute_parameters() instead.
   constexpr parameter_permuter(ParamSequence &&params, std::tuple<Hooks...> &&hooks)
@@ -153,6 +170,8 @@ public:
 
   //! Returns the parameter sequence this permuter was constructed with
   const ParamSequence &parameter_sequence() const { return _params; }
+  //! Returns the hooks this permuter was constructed with
+  const std::tuple<Hooks...> &hooks() const { return _hooks; }
 
   /*! Permute the callable f with this parameter permuter, returning a sequence of results.
   \return An array or vector of results (depends on ParamSequence::size() being constexpr).
@@ -268,6 +287,10 @@ template <class... Parameters, size_t N, class... Hooks> constexpr auto mt_permu
 
 namespace detail
 {
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4127)  // conditional expression is constant
+#endif
   class _print_params
   {
     template <bool first> static void _do() {}
@@ -282,11 +305,39 @@ namespace detail
   public:
     template <class... Types> void operator()(Types &&... vs) const { _do<true>(std::forward<Types>(vs)...); }
   };
-  template <class Sequence> void pretty_print_preamble(const Sequence &_sequence, size_t idx)
+  template <class Permuter> class _print_hook
+  {
+    const typename Permuter::parameter_sequence_value_type &_v;
+    template <size_t Idx> void _do() const {}
+    template <size_t Idx, class T, class... Types> void _do(T &&v, Types &&... vs) const
+    {
+      if(Idx > 0)
+        BOOST_KERNELTEST_COUT(", ");
+      // Fetch the hook parameter set for this hook
+      using hook_pars_type = typename Permuter::template parameter_type<1 + Idx>;
+#ifdef __c2__  // c2 be buggy
+      const auto &hook_pars = std::get<2 + Idx>(_v);
+#else
+      const auto &hook_pars = Permuter::parameter_value<1 + Idx>(_v);
+#endif
+      // Each hook instantiator exposes a member function print(...) which takes
+      // the same args as the hook instance
+      detail::call_f_with_parameters([&v](const auto &... vs) { BOOST_KERNELTEST_COUT(v.print(vs...)); }, hook_pars, std::make_index_sequence<parameters_size<hook_pars_type>::value>());
+      _do<Idx + 1>(std::forward<Types>(vs)...);
+    };
+
+  public:
+    _print_hook(const typename Permuter::parameter_sequence_value_type &v)
+        : _v(v)
+    {
+    }
+    template <class... Types> void operator()(Types &&... vs) const { _do<0>(std::forward<Types>(vs)...); }
+  };
+  template <class Permuter> void pretty_print_preamble(const Permuter &_permuter, size_t idx)
   {
     using namespace boost_lite::console_colours;
-    BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _sequence.size() << ": " << normal);
-    auto parameter_sequence_item_it = _sequence.begin();
+    BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _permuter.parameter_sequence().size() << ": " << normal);
+    auto parameter_sequence_item_it = _permuter.parameter_sequence().cbegin();
     std::advance(parameter_sequence_item_it, idx);
     // Print kernel parameters we called the kernel with
     {
@@ -296,70 +347,79 @@ namespace detail
       detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
       BOOST_KERNELTEST_COUT(")");
     }
-    // If there are any hooks, print
+    // If there are any hooks, print those
+    if(Permuter::hook_sequence_size > 0)
+    {
+      BOOST_KERNELTEST_COUT(" with ");
+      const auto &hooks = _permuter.hooks();
+      detail::call_f_with_tuple(_print_hook<Permuter>(*parameter_sequence_item_it), hooks, std::make_index_sequence<Permuter::hook_sequence_size>());
+    }
     BOOST_KERNELTEST_COUT("\n");
   }
 
-  template <class Sequence, class U> class pretty_print_failure_impl
+  template <class Permuter, class U> class pretty_print_failure_impl
   {
-    const Sequence &_sequence;
+    const Permuter &_permuter;
     U _f;
 
   public:
     template <class V>
-    pretty_print_failure_impl(const Sequence &sequence, V &&f)
-        : _sequence(sequence)
+    pretty_print_failure_impl(const Permuter &permuter, V &&f)
+        : _permuter(permuter)
         , _f(std::forward<V>(f))
     {
     }
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      pretty_print_preamble(_sequence, idx);
+      pretty_print_preamble(_permuter, idx);
       BOOST_KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
     }
   };
-  template <class Sequence, class U> class pretty_print_success_impl
+  template <class Permuter, class U> class pretty_print_success_impl
   {
-    const Sequence &_sequence;
+    const Permuter &_permuter;
     U _f;
 
   public:
     template <class V>
-    pretty_print_success_impl(const Sequence &sequence, V &&f)
-        : _sequence(sequence)
+    pretty_print_success_impl(const Permuter &permuter, V &&f)
+        : _permuter(permuter)
         , _f(std::forward<V>(f))
     {
     }
     template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
-      pretty_print_preamble(_sequence, idx);
-      BOOST_KERNELTEST_COUT("    " << bold << green << "PASSED" << normal << result << std::endl);
+      pretty_print_preamble(_permuter, idx);
+      BOOST_KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << result << std::endl);
       _f(result, shouldbe);
       return true;
     }
   };
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 }
-//! Returns a callable which colourfully prints a failed result
-template <class Sequence, class U> detail::pretty_print_failure_impl<Sequence, U> pretty_print_failure(const Sequence &s, U &&f)
+//! Colourfully prints a failed result
+template <class Permuter, class U> detail::pretty_print_failure_impl<Permuter, U> pretty_print_failure(const Permuter &s, U &&f)
 {
-  return detail::pretty_print_failure_impl<Sequence, U>(s, std::forward<U>(f));
+  return detail::pretty_print_failure_impl<Permuter, U>(s, std::forward<U>(f));
 }
 //! \overload
-template <class Sequence> auto pretty_print_failure(const Sequence &s)
+template <class Permuter> auto pretty_print_failure(const Permuter &s)
 {
   return pretty_print_failure(s, [](const auto &, const auto &) {});
 }
-//! Returns a callable which colourfully prints a successful result
-template <class Sequence, class U> detail::pretty_print_success_impl<Sequence, U> pretty_print_success(const Sequence &s, U &&f)
+//! Colourfully prints a successful result
+template <class Permuter, class U> detail::pretty_print_success_impl<Permuter, U> pretty_print_success(const Permuter &s, U &&f)
 {
-  return detail::pretty_print_success_impl<Sequence, U>(s, std::forward<U>(f));
+  return detail::pretty_print_success_impl<Permuter, U>(s, std::forward<U>(f));
 }
 //! \overload
-template <class Sequence> auto pretty_print_success(const Sequence &s)
+template <class Permuter> auto pretty_print_success(const Permuter &s)
 {
   return pretty_print_success(s, [](const auto &, const auto &) {});
 }

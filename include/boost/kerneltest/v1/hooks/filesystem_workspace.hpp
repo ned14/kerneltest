@@ -258,6 +258,7 @@ namespace hooks
     {
       const char *workspacebase;
       template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<is_throwing, Parent, RetType>(parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace); }
+      std::string print(const char *workspace) const { return std::string("precondition ") + workspace; }
     };
   }
   //! The parameters for the filesystem_setup hook
@@ -422,6 +423,7 @@ namespace hooks
     {
       const char *workspacebase;
       template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return structure_impl<Parent, RetType>(parent, testret, idx, workspacebase, workspace); }
+      std::string print(const char *workspace) const { return std::string("postcondition ") + workspace; }
     };
   }
   //! The parameters for the filesystem_comparison_structure hook
