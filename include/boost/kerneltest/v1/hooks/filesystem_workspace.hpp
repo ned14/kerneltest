@@ -106,7 +106,7 @@ namespace hooks
         // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
         // We must also account for an out-of-tree build
         stl1z::filesystem::path temp;
-        do
+        for(;;)
         {
           temp = _has_product(library_dir, _product);
           if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
@@ -115,8 +115,11 @@ namespace hooks
             product = _product;
             return ret.path;
           }
-          library_dir = stl1z::filesystem::canonical(library_dir / "..");
-        } while(library_dir.native().size() > 3);
+          if(library_dir.native().size() > 3)
+            library_dir = stl1z::filesystem::canonical(library_dir / "..");
+          else
+            break;
+        }
         if(is_throwing)
           throw std::runtime_error("Couldn't figure out where the product lives");
         else
