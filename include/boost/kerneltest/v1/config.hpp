@@ -3,6 +3,7 @@
 File Created: Apr 2016
 */
 
+#include "../boost-lite/include/cpp_feature.h"
 #include "../boost-lite/include/import.h"
 
 #ifndef __cpp_exceptions
@@ -63,7 +64,7 @@ File Created: Apr 2016
 #else
 #define BOOST_KERNELTEST_V1_FILESYSTEM_IMPL std
 #endif
-#define BOOST_KERNELTEST_V1 (boost), (kerneltest), (BOOSTLITE_NAMESPACE_VERSION(v1, BOOST_KERNELTEST_V1_STL11_IMPL, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL), inline)
+#define BOOST_KERNELTEST_V1 (boost), (kerneltest), (BOOSTLITE_BIND_NAMESPACE_VERSION(v1, BOOST_KERNELTEST_V1_STL11_IMPL, BOOST_KERNELTEST_V1_FILESYSTEM_IMPL), inline)
 #if DOXYGEN_SHOULD_SKIP_THIS
 #define BOOST_KERNELTEST_V1_NAMESPACE boost::kerneltest::v1
 #define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN                                                                                                                                                                                                                                                                                    \
@@ -78,9 +79,10 @@ File Created: Apr 2016
   }                                                                                                                                                                                                                                                                                                                            \
   }
 #else
-#define BOOST_KERNELTEST_V1_NAMESPACE BOOSTLITE_NAMESPACE(BOOST_KERNELTEST_V1)
-#define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN BOOSTLITE_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1)
-#define BOOST_KERNELTEST_V1_NAMESPACE_END BOOSTLITE_NAMESPACE_END(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE BOOSTLITE_BIND_NAMESPACE(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE_BEGIN BOOSTLITE_BIND_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE_EXPORT_BEGIN BOOSTLITE_BIND_NAMESPACE_BEGIN(BOOST_KERNELTEST_V1)
+#define BOOST_KERNELTEST_V1_NAMESPACE_END BOOSTLITE_BIND_NAMESPACE_END(BOOST_KERNELTEST_V1)
 #endif
 
 // From automated matrix generator

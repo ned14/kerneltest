@@ -8,8 +8,8 @@ File Created: May 2016
 #ifndef BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 #define BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 
-#include "../../boost-lite/include/algorithm/string.hpp"
-#include "../../boost-lite/include/utils/thread.hpp"
+#include "../boost-lite/include/algorithm/string.hpp"
+#include "../boost-lite/include/utils/thread.hpp"
 
 #include <unordered_map>
 
