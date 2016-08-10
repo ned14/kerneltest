@@ -8,6 +8,7 @@ File Created: Apr 2016
 #ifndef BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 #define BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
 
+#include "../boost-lite/include/console_colours.hpp"
 #include "../boost-lite/include/type_traits.hpp"
 
 #include <array>

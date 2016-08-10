@@ -3,13 +3,14 @@
 File Created: Apr 2016
 */
 
-#include "../boost-lite/include/console_colours.hpp"
 #include "config.hpp"
-//#define BOOST_CATCH_CUSTOM_MAIN_DEFINED
-#include "../boost-lite/include/boost/test/unit_test.hpp"
 
 #ifndef BOOST_KERNELTEST_TEST_KERNEL_HPP
 #define BOOST_KERNELTEST_TEST_KERNEL_HPP
+
+//#define BOOST_CATCH_CUSTOM_MAIN_DEFINED
+#include "../boost-lite/include/console_colours.hpp"
+#include "../boost-lite/include/boost/test/unit_test.hpp"
 
 /*! \brief Implement a test kernel
 \param category This category of test kernel. Typically 'integration'.

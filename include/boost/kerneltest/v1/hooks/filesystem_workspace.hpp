@@ -11,6 +11,7 @@ File Created: May 2016
 #include "../boost-lite/include/algorithm/string.hpp"
 #include "../boost-lite/include/utils/thread.hpp"
 
+#include <fstream>
 #include <unordered_map>
 
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
