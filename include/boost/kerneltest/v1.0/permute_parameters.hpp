@@ -425,6 +425,20 @@ template <class Permuter> auto pretty_print_success(const Permuter &s)
   return pretty_print_success(s, [](const auto &, const auto &) {});
 }
 
+//! Do a normal permuter.check, but also call BOOST_CHECK() on every single result
+template <class Permuter, class Results> inline void check_results_with_boost_test(const Permuter &permuter, const Results &results)
+{
+  // Note that we accumulate failures into the checks vector for later processing
+  std::vector<std::function<void()>> checks;
+  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result == shouldbe); }); }), pretty_print_success(permuter));
+  BOOST_CHECK(all_passed);
+  // The pretty printing gets messed up by the unit test output, so defer telling it
+  // about failures until now
+  for(auto &i : checks)
+    i();
+}
+
+
 BOOST_KERNELTEST_V1_NAMESPACE_END
 
 #endif  // namespace
