@@ -43,7 +43,7 @@ all_compile_features(PUBLIC
   cxx_noexcept
   cxx_constexpr
   cxx_thread_local
-  #cxx_init_captures                      ## Not supported yet by cmake 3.6
+  cxx_lambda_init_captures
   cxx_attributes
   cxx_generic_lambdas
 )
@@ -51,6 +51,26 @@ if(NOT MSVC OR CMAKE_VERSION VERSION_GREATER 3.59)
   all_compile_features(PUBLIC
     cxx_variable_templates
   )
+endif()
+# Check if our std::tuple can do aggregate initialisation
+include(CheckCXXSourceCompiles)
+set(OLD_CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+set(OLD_CMAKE_CXX_STANDARD_REQUIRED ${CMAKE_CXX_STANDARD_REQUIRED})
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
+check_cxx_source_compiles("
+#include <tuple>
+int main() {
+  constexpr std::tuple<int, double, const char *> fc[] = {
+      {1, 1.0, \"hi1\"}, {2, 2.0, \"hi2\"}, {3, 3.0, \"hi3\"}};
+  static_assert(std::get<0>(fc[0]), \"die\");
+  return 0;
+}
+" CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+set(CMAKE_CXX_STANDARD ${OLD_CMAKE_CXX_STANDARD})
+set(CMAKE_CXX_STANDARD_REQUIRED ${OLD_CMAKE_CXX_STANDARD_REQUIRED})
+if(CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+  all_compile_definitions(PUBLIC BOOST_KERNELTEST_HAVE_AGGREGATE_TUPLE=1)
 endif()
 # Set the library dependencies this library has
 target_link_libraries(kerneltest_hl INTERFACE boost-lite_hl)

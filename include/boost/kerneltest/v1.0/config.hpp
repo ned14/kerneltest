@@ -223,7 +223,7 @@ using BOOST_OUTCOME_V1_NAMESPACE::make_errored_outcome;
 BOOST_KERNELTEST_V1_NAMESPACE_END
 
 // We need an aggregate initialisable collection of heterogeneous types
-#if __cplusplus >= 20170000L || __GNUC__ >= 6
+#if __cplusplus >= 20170000L || __GNUC__ >= 6 || BOOST_KERNELTEST_HAVE_AGGREGATE_TUPLE
 #include <tuple>
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 template <class... Types> using parameters = std::tuple<Types...>;
@@ -259,6 +259,15 @@ struct path_hasher
 {
   size_t operator()(const stl1z::filesystem::path &p) const { return std::hash<stl1z::filesystem::path::string_type>()(p.native()); }
 };
+
+//! Contains various hooks which can be inserted into a `parameter_permuter`
+namespace hooks
+{
+}
+//! Alias hooks to precondition
+namespace precondition = hooks;
+//! Alias hooks to postcondition
+namespace postcondition = hooks;
 
 //! Keeps what the current test kernel is for the calling thread
 static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
