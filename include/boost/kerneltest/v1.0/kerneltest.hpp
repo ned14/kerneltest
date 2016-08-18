@@ -61,6 +61,7 @@ import BOOST_KERNELTEST_MODULE_NAME;
 
 #include "permute_parameters.hpp"
 
+#include "hooks/custom.hpp"
 #include "hooks/filesystem_workspace.hpp"
 
 #endif
