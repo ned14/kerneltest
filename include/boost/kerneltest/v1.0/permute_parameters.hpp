@@ -218,13 +218,60 @@ public:
         *it++ = &i;
     }
     auto call_f = [&](size_t idx) {
-      using callable_parameters_type = parameter_type<0>;
-      const callable_parameters_type &p = parameter_value<0>(*params[idx]);
-      // Instantiate the hooks
-      auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, *params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
-      (void) hooks;
-      // Call the kernel
-      results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
+      int stage = 0;
+      auto nested_f = [&](size_t idx) {
+        using callable_parameters_type = parameter_type<0>;
+        const callable_parameters_type &p = parameter_value<0>(*params[idx]);
+        try
+        {
+          // Instantiate the hooks
+          auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, *params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
+          (void) hooks;
+          stage = 1;
+          // Call the kernel
+          results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
+          stage = 2;
+        }
+        catch(...)
+        {
+          kerneltest_errc code = kerneltest_errc::setup_exception_thrown;
+          if(1 == stage)
+            code = kerneltest_errc::kernel_exception_thrown;
+          else if(2 == stage)
+            code = kerneltest_errc::teardown_exception_thrown;
+#if 1
+          results[idx].set_error(error_code_extended(make_error_code(code)));
+//! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
+#else
+          try
+          {
+            std::throw_with_nested(std::system_error(make_error_code(code)));
+          }
+          catch(...)
+          {
+            results[idx].set_exception(std::current_exception());
+          }
+#endif
+        }
+      };
+//! \todo Need to install signal handlers for each permutation execution thread somehow
+#ifdef _WIN32
+      __try
+      {
+#endif
+        nested_f(idx);
+#ifdef _WIN32
+      }
+      __except(EXCEPTION_EXECUTE_HANDLER)
+      {
+        kerneltest_errc code = kerneltest_errc::setup_seh_exception_thrown;
+        if(1 == stage)
+          code = kerneltest_errc::kernel_seh_exception_thrown;
+        else if(2 == stage)
+          code = kerneltest_errc::teardown_seh_exception_thrown;
+        results[idx].set_error(error_code_extended(make_error_code(code)));
+      }
+#endif
     };
 #ifdef _OPENMP
     if(is_multithreaded)
@@ -468,6 +515,7 @@ template <class Permuter> auto pretty_print_success(const Permuter &s)
   return pretty_print_success(s, [](const auto &, const auto &) {});
 }
 
+
 //! Do a normal permuter.check, but also call BOOST_CHECK() on every single result
 template <class Permuter, class Results> inline void check_results_with_boost_test(const Permuter &permuter, const Results &results)
 {
@@ -479,6 +527,17 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
   // about failures until now
   for(auto &i : checks)
     i();
+}
+
+/*! If expr is false, sets testreturn to an error_code_extended of `kerneltest_errc::check_failed` with an extended message of the expr which failed
+*/
+#define BOOST_KERNELTEST_CHECK(testreturn, expr)                                                                                                                                                                                                                                                                               \
+  if(!(expr))                                                                                                                                                                                                                                                                                                                  \
+  {                                                                                                                                                                                                                                                                                                                            \
+    \
+(testreturn)                                                                                                                                                                                                                                                                                                                   \
+    .set_error(error_code_extended(make_error_code(kerneltest_errc::check_failed), #expr, 0, 0, true));                                                                                                                                                                                                                        \
+  \
 }
 
 

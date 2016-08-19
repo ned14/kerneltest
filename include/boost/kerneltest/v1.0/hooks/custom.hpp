@@ -56,11 +56,11 @@ namespace hooks
     };
     template <class state_type> struct make_impl
     {
-      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent *parent, RetType &testret, size_t idx, Args &&... args) const { return impl<V, state_type>{std::forward<V>(onfinish), onbegin(parent, testret, idx, std::forward<Args>(args)...)}; }
+      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent &parent, RetType &testret, size_t idx, Args &&... args) const { return impl<V, state_type>{std::forward<V>(onfinish), onbegin(parent, testret, idx, std::forward<Args>(args)...)}; }
     };
     template <> struct make_impl<void>
     {
-      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent *parent, RetType &testret, size_t idx, Args &&... args) const
+      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent &parent, RetType &testret, size_t idx, Args &&... args) const
       {
         onbegin(parent, testret, idx, std::forward<Args>(args)...);
         return impl<V, void>{std::forward<V>(onfinish)};
@@ -76,8 +76,8 @@ namespace hooks
       // Called at the beginning of an individual test. Returns object destroyed at the end of an individual test.
       template <class Parent, class RetType, class... Args> auto operator()(Parent *parent, RetType &testret, size_t idx, Args &&... args) const
       {
-        using return_type = decltype(onbegin(parent, testret, idx, std::forward<Args>(args)...));
-        return make_impl<return_type>()(onbegin, std::move(onfinish), parent, testret, idx, std::forward<Args>(args)...);
+        using return_type = decltype(onbegin(*parent, testret, idx, std::forward<Args>(args)...));
+        return make_impl<return_type>()(onbegin, std::move(onfinish), *parent, testret, idx, std::forward<Args>(args)...);
       }
       template <class... Args> std::string print(Args &&...) const { return description; }
     };
@@ -85,7 +85,7 @@ namespace hooks
   //! The parameters for the custom hook
   template <class... Args> using custom_parameters = parameters<Args...>;
   /*! Kernel test hook invoking a lambda before a test and another lambda after a test.
-  The first lambda is called with the spec `(parameter_permuter<...> *parent, outcome<T> &testret, size_t, custom_parameters ...)`.
+  The first lambda is called with the spec `(parameter_permuter<...> &parent, outcome<T> &testret, size_t, custom_parameters ...)`.
   If the first lambda returns anything, it is passed as the first parameter to the second lambda.
   */
   template <class U, class V> inline auto custom(U &&onbegin, V &&onfinish, std::string description) { return custom_impl::inst<U, V>{std::forward<U>(onbegin), std::forward<V>(onfinish), std::move(description)}; }

@@ -285,9 +285,23 @@ static BOOSTLITE_THREAD_LOCAL struct current_test_kernel_t
 //! \brief Enumeration of the ways in which a kernel test may fail
 enum class kerneltest_errc
 {
-  filesystem_setup_internal_failure = 1,   //!< hooks::filesystem_setup failed during setup or teardown
-  filesystem_comparison_internal_failure,  //!< hooks::filesystem_comparison failed during setup or teardown
-  filesystem_comparison_failed             //!< hooks::filesystem_comparison found workspaces differed
+  check_failed = 1,  //!< A BOOST_KERNELTEST_CHECK failed
+
+  setup_exception_thrown = 4,     //!< A C++ exception was thrown during the kernel hook setup
+  kernel_exception_thrown = 5,    //!< A C++ exception was thrown during the kernel execution
+  teardown_exception_thrown = 6,  //!< A C++ exception was thrown during the kernel teardown
+
+  setup_seh_exception_thrown = 8,      //!< A SEH exception was thrown during the kernel hook setup
+  kernel_seh_exception_thrown = 9,     //!< A SEH exception was thrown during the kernel execution
+  teardown_seh_exception_thrown = 10,  //!< A SEH exception was thrown during the kernel teardown
+
+  setup_signal_thrown = 12,     //!< A signal was thrown during the kernel hook setup
+  kernel_signal_thrown = 13,    //!< A signal was thrown during the kernel execution
+  teardown_signal_thrown = 14,  //!< A signal was thrown during the kernel teardown
+
+  filesystem_setup_internal_failure = 256,  //!< hooks::filesystem_setup failed during setup or teardown
+  filesystem_comparison_internal_failure,   //!< hooks::filesystem_comparison failed during setup or teardown
+  filesystem_comparison_failed              //!< hooks::filesystem_comparison found workspaces differed
 };
 
 namespace detail
@@ -301,11 +315,36 @@ namespace detail
       switch(c)
       {
       case 1:
+        return "BOOST_KERNELTEST_CHECK() failure";
+
+      case 4:
+        return "C++ exception thrown during kernel setup";
+      case 5:
+        return "C++ exception thrown during kernel execution";
+      case 6:
+        return "C++ exception thrown during kernel teardown";
+
+      case 8:
+        return "SEH exception thrown during kernel setup";
+      case 9:
+        return "SEH exception thrown during kernel execution";
+      case 10:
+        return "SEH exception thrown during kernel teardown";
+
+      case 12:
+        return "signal thrown during kernel setup";
+      case 13:
+        return "signal thrown during kernel execution";
+      case 14:
+        return "signal thrown during kernel teardown";
+
+      case 256:
         return "filesystem_setup internal failure";
-      case 2:
+      case 257:
         return "filesystem_comparison internal failure";
-      case 3:
+      case 258:
         return "filesystem comparison failed";
+
       default:
         return "unknown";
       }
