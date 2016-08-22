@@ -41,29 +41,41 @@ namespace hooks
   {
     template <class U, class V> struct impl
     {
+      bool active;
       U onfinish;
       V par;
-      impl(impl &&) noexcept = default;
+      impl(U &&_onfinish, V &&_par) noexcept : active(true), onfinish(std::move(_onfinish)), par(std::move(_par)) {}
+      impl(impl &&o) noexcept : active(o.active), onfinish(std::move(o.onfinish)), par(std::move(o.par)) { o.active = false; }
       impl(const impl &) = delete;
-      ~impl() { onfinish(par); }
+      ~impl()
+      {
+        if(active)
+          onfinish(par);
+      }
     };
     template <class U> struct impl<U, void>
     {
+      bool active;
       U onfinish;
-      impl(impl &&) noexcept = default;
+      impl(U &&_onfinish) noexcept : active(true), onfinish(std::move(_onfinish)) {}
+      impl(impl &&o) noexcept : active(o.active), onfinish(std::move(o.onfinish)) { o.active = false; }
       impl(const impl &) = delete;
-      ~impl() { onfinish(); }
+      ~impl()
+      {
+        if(active)
+          onfinish();
+      }
     };
     template <class state_type> struct make_impl
     {
-      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent &parent, RetType &testret, size_t idx, Args &&... args) const { return impl<V, state_type>{std::forward<V>(onfinish), onbegin(parent, testret, idx, std::forward<Args>(args)...)}; }
+      template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent &parent, RetType &testret, size_t idx, Args &&... args) const { return impl<V, state_type>(std::forward<V>(onfinish), onbegin(parent, testret, idx, std::forward<Args>(args)...)); }
     };
     template <> struct make_impl<void>
     {
       template <class U, class V, class Parent, class RetType, class... Args> auto operator()(U &&onbegin, V &&onfinish, Parent &parent, RetType &testret, size_t idx, Args &&... args) const
       {
         onbegin(parent, testret, idx, std::forward<Args>(args)...);
-        return impl<V, void>{std::forward<V>(onfinish)};
+        return impl<V, void>(std::forward<V>(onfinish));
       }
     };
     // Instantiated during permuter construction
@@ -72,6 +84,8 @@ namespace hooks
       U onbegin;
       V onfinish;
       std::string description;
+      inst(const inst &) = delete;
+      inst(inst &&) noexcept = default;
 
       // Called at the beginning of an individual test. Returns object destroyed at the end of an individual test.
       template <class Parent, class RetType, class... Args> auto operator()(Parent *parent, RetType &testret, size_t idx, Args &&... args) const
