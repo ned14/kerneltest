@@ -37,8 +37,13 @@ DEALINGS IN THE SOFTWARE.
 #include "../boost-lite/include/boost/test/unit_test.hpp"
 #include "../boost-lite/include/console_colours.hpp"
 
+#define BOOST_KERNELTEST_TEST_UNIQUE_NAME2(a, b) a##b
+#define BOOST_KERNELTEST_TEST_UNIQUE_NAME1(a, b) BOOST_KERNELTEST_TEST_UNIQUE_NAME2(a, b)
+//! \brief A macro expanding into a unique identifier (for this compilation unit)
+#define BOOST_KERNELTEST_TEST_UNIQUE_NAME(prefix) BOOST_KERNELTEST_TEST_UNIQUE_NAME1(prefix, __COUNTER__)
+
 /*! \brief Implement a test kernel
-\param category This category of test kernel. Typically 'integration'.
+\param category This category of test kernel. Typically 'unit' or 'integration'.
 \param product Name of the product or library being tested.
 \param test The name of this test kernel.
 \param name The name of this test.

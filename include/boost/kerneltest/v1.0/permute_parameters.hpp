@@ -198,6 +198,10 @@ public:
   const ParamSequence &parameter_sequence() const { return _params; }
   //! Returns the hooks this permuter was constructed with
   const std::tuple<Hooks...> &hooks() const { return _hooks; }
+  //! Convenience indexer into parameter sequence
+  auto &operator[](size_t idx) { return _params[idx]; }
+  //! Convenience indexer into parameter sequence
+  const auto &operator[](size_t idx) const { return _params[idx]; }
 
   /*! Permute the callable f with this parameter permuter, returning a sequence of results.
   \return An array or vector of results (depends on ParamSequence::size() being constexpr).
