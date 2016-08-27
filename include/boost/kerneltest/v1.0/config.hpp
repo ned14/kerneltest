@@ -3,23 +3,30 @@
 File Created: Apr 2016
 */
 
+#define BOOST_KERNELTEST_CONFIGURED
+
+#if !defined(BOOST_KERNELTEST_HEADERS_ONLY) && !defined(BOOST_ALL_DYN_LINK)
+//! \brief Whether KernelTest is a headers only library. Defaults to 1 unless BOOST_ALL_DYN_LINK is defined. \ingroup config
+#define BOOST_KERNELTEST_HEADERS_ONLY 1
+#endif
+
 #include "../boost-lite/include/cpp_feature.h"
 #include "../boost-lite/include/import.h"
 
 #ifndef __cpp_exceptions
-#error Boost.AFIO needs C++ exceptions to be turned on
+#error Boost.KernelTest needs C++ exceptions to be turned on
 #endif
 #ifndef __cpp_alias_templates
-#error Boost.AFIO needs template alias support in the compiler
+#error Boost.KernelTest needs template alias support in the compiler
 #endif
 #ifndef __cpp_variadic_templates
-#error Boost.AFIO needs variadic template support in the compiler
+#error Boost.KernelTest needs variadic template support in the compiler
 #endif
 #ifndef __cpp_noexcept
-#error Boost.AFIO needs noexcept support in the compiler
+#error Boost.KernelTest needs noexcept support in the compiler
 #endif
 #ifndef __cpp_constexpr
-#error Boost.AFIO needs constexpr (C++ 11) support in the compiler
+#error Boost.KernelTest needs constexpr (C++ 11) support in the compiler
 #endif
 
 #ifndef BOOST_KERNELTEST_LATEST_VERSION
@@ -29,7 +36,7 @@ File Created: Apr 2016
 // Default to the C++ 11 STL for atomic, chrono, mutex and thread except on Mingw32
 #if(defined(BOOST_KERNELTEST_USE_BOOST_THREAD) && BOOST_KERNELTEST_USE_BOOST_THREAD) || (defined(__MINGW32__) && !defined(__MINGW64__) && !defined(__MINGW64_VERSION_MAJOR))
 #if defined(BOOST_OUTCOME_USE_BOOST_THREAD) && BOOST_OUTCOME_USE_BOOST_THREAD != 1
-#error You must configure Boost.Outcome and Boost.AFIO to both use Boost.Thread together or both not at all.
+#error You must configure Boost.Outcome and Boost.KernelTest to both use Boost.Thread together or both not at all.
 #endif
 #define BOOST_OUTCOME_USE_BOOST_THREAD 1
 #define BOOST_KERNELTEST_V2_STL11_IMPL boost
@@ -37,11 +44,11 @@ File Created: Apr 2016
 #define BOOST_THREAD_VERSION 3
 #endif
 #if BOOST_THREAD_VERSION < 3
-#error Boost.AFIO requires that Boost.Thread be configured to v3 or later
+#error Boost.KernelTest requires that Boost.Thread be configured to v3 or later
 #endif
 #else
 #if defined(BOOST_OUTCOME_USE_BOOST_THREAD) && BOOST_OUTCOME_USE_BOOST_THREAD != 0
-#error You must configure Boost.Outcome and Boost.AFIO to both use Boost.Thread together or both not at all.
+#error You must configure Boost.Outcome and Boost.KernelTest to both use Boost.Thread together or both not at all.
 #endif
 #define BOOST_OUTCOME_USE_BOOST_THREAD 0
 #define BOOST_KERNELTEST_V1_STL11_IMPL std
@@ -189,7 +196,7 @@ namespace stl11
 }
 BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
-#if BOOST_AFIO_USE_BOOST_FILESYSTEM
+#if BOOST_KERNELTEST_USE_BOOST_FILESYSTEM
 #include "../boost-lite/include/bind/stl1z/boost/filesystem"
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace stl1z
@@ -212,11 +219,56 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
 
 
+// Bring in the Boost macro emulations
+#include "../boost-lite/include/boost/config.hpp"
+// Bring in scoped undo
+#include "../boost-lite/include/scoped_undo.hpp"
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+using BOOSTLITE_NAMESPACE::scoped_undo::undoer;
+BOOST_KERNELTEST_V1_NAMESPACE_END
+
+// Configure BOOST_KERNELTEST_DECL
+#if(defined(BOOST_KERNELTEST_DYN_LINK) || defined(BOOST_ALL_DYN_LINK)) && !defined(BOOST_KERNELTEST_STATIC_LINK)
+
+#if defined(BOOST_KERNELTEST_SOURCE)
+#define BOOST_KERNELTEST_DECL BOOST_SYMBOL_EXPORT
+#define BOOST_KERNELTEST_BUILD_DLL
+#else
+#define BOOST_KERNELTEST_DECL BOOST_SYMBOL_IMPORT
+#endif
+#else
+#define BOOST_KERNELTEST_DECL
+#endif  // building a shared library
+
+
+#if BOOST_KERNELTEST_HEADERS_ONLY == 1 && !defined(BOOST_KERNELTEST_SOURCE)
+/*! \brief Expands into the appropriate markup to declare an `extern`
+function exported from the KernelTest DLL if not building headers only.
+\ingroup config
+*/
+#define BOOST_KERNELTEST_HEADERS_ONLY_FUNC_SPEC inline
+/*! \brief Expands into the appropriate markup to declare a class member
+function exported from the KernelTest DLL if not building headers only.
+\ingroup config
+*/
+#define BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC inline
+/*! \brief Expands into the appropriate markup to declare a virtual class member
+function exported from the KernelTest DLL if not building headers only.
+\ingroup config
+*/
+#define BOOST_KERNELTEST_HEADERS_ONLY_VIRTUAL_SPEC inline virtual
+#else
+#define BOOST_KERNELTEST_HEADERS_ONLY_FUNC_SPEC extern BOOST_KERNELTEST_DECL
+#define BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC
+#define BOOST_KERNELTEST_HEADERS_ONLY_VIRTUAL_SPEC virtual
+#endif
+
+
 #include "../outcome/include/boost/outcome.hpp"
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 // We are so heavily tied into Outcome we just import it wholesale into our namespace
 using namespace BOOST_OUTCOME_V1_NAMESPACE;
-// Force these to the same overloading precedence as if they were defined in the AFIO namespace
+// Force these to the same overloading precedence as if they were defined in the KernelTest namespace
 using BOOST_OUTCOME_V1_NAMESPACE::outcome;
 using BOOST_OUTCOME_V1_NAMESPACE::make_errored_result;
 using BOOST_OUTCOME_V1_NAMESPACE::make_errored_outcome;

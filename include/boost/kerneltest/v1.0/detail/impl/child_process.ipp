@@ -29,7 +29,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-#include "../child_process.hpp"
+#include "../../child_process.hpp"
 
 #include <fcntl.h>
 #ifdef _MSC_VER
@@ -41,9 +41,9 @@ DEALINGS IN THE SOFTWARE.
 #pragma warning(disable : 4996)  // use of posix apis
 #endif
 
-BOOST_AFIO_V2_NAMESPACE_BEGIN
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
-namespace detail
+namespace child_process
 {
   void child_process::_initialise_files() const
   {
@@ -266,9 +266,9 @@ namespace detail
   }
 }
 
-BOOST_AFIO_V2_NAMESPACE_END
+BOOST_KERNELTEST_V1_NAMESPACE_END
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "windows/child_process.ipp"
 #else
 #include "posix/child_process.ipp"

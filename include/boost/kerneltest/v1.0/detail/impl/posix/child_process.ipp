@@ -29,21 +29,21 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-#include "../../child_process.hpp"
+#include "../../../child_process.hpp"
 
-BOOST_AFIO_V2_NAMESPACE_BEGIN
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
-namespace detail
+namespace child_process
 {
   child_process::~child_process();
 
-  BOOST_AFIO_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path path) noexcept;
+  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path path) noexcept;
 
   bool child_process::is_running() const noexcept;
 
   result<intptr_t> child_process::wait_until(deadline d) noexcept;
 
-  BOOST_AFIO_HEADERS_ONLY_MEMFUNC_SPEC stl1z::filesystem::path child_process::current_process_path();
+  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC stl1z::filesystem::path child_process::current_process_path();
 }
 
-BOOST_AFIO_V2_NAMESPACE_END
+BOOST_KERNELTEST_V1_NAMESPACE_END

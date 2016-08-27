@@ -29,11 +29,10 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef BOOST_AFIO_CHILD_PROCESS_H
-#define BOOST_AFIO_CHILD_PROCESS_H
+#include "config.hpp"
 
-#include "../deadline.h"
-#include "../native_handle_type.hpp"
+#ifndef BOOST_KERNELTEST_CHILD_PROCESS_H
+#define BOOST_KERNELTEST_CHILD_PROCESS_H
 
 #include <map>
 #include <vector>
@@ -43,15 +42,30 @@ DEALINGS IN THE SOFTWARE.
 #pragma warning(disable : 4251)  // dll interface
 #endif
 
-BOOST_AFIO_V2_NAMESPACE_BEGIN
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
-namespace detail
+namespace child_process
 {
+  // Native handle support
+  namespace win
+  {
+    using handle = void *;
+    using dword = unsigned long;
+  }
+
+  //! A native handle type
+  union native_handle_type {
+    intptr_t _init;
+    int fd;         //!< A POSIX file descriptor
+    int pid;        //!< A POSIX process identifier
+    win::handle h;  //!< A Windows HANDLE
+  };
+
   //! Returns the path of the calling process
-  BOOST_AFIO_HEADERS_ONLY_FUNC_SPEC stl1z::filesystem::path current_process_path();
+  BOOST_KERNELTEST_HEADERS_ONLY_FUNC_SPEC stl1z::filesystem::path current_process_path();
 
   //! Returns the environment of the calling process
-  BOOST_AFIO_HEADERS_ONLY_FUNC_SPEC std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> current_process_env();
+  BOOST_KERNELTEST_HEADERS_ONLY_FUNC_SPEC std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> current_process_env();
 
   /*! \class child_process
   \brief Launches and manages a child process with stdin, stdout and stderr.
@@ -60,7 +74,7 @@ namespace detail
   handle and use async_pipe_handle or something as the handle implementation to avoid
   deadlocking stdout and stderr.
   */
-  class BOOST_AFIO_DECL child_process
+  class BOOST_KERNELTEST_DECL child_process
   {
     stl1z::filesystem::path _path;
     native_handle_type _processh;
@@ -100,7 +114,8 @@ namespace detail
     ~child_process();
 
     //! Launches an executable as a child process. No shell is invoked on POSIX.
-    static BOOST_AFIO_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> launch(stl1z::filesystem::path path, std::vector<stl1z::filesystem::path::string_type> args, std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> env = current_process_env(), bool use_parent_errh = false) noexcept;
+    static BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> launch(stl1z::filesystem::path path, std::vector<stl1z::filesystem::path::string_type> args, std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> env = current_process_env(),
+                                                                                   bool use_parent_errh = false) noexcept;
 
     //! Returns the path of the executable
     const stl1z::filesystem::path &path() const noexcept { return _path; }
@@ -165,18 +180,18 @@ namespace detail
     bool is_running() const noexcept;
 
     //! Waits for a child process to exit until deadline /em d
-    result<intptr_t> wait_until(deadline d) noexcept;
+    result<intptr_t> wait_until(stl11::chrono::steady_clock::time_point d) noexcept;
     //! \overload
-    result<intptr_t> wait() noexcept { return wait_until(deadline()); }
+    result<intptr_t> wait() noexcept { return wait_until(stl11::chrono::steady_clock::time_point()); }
   };
 }
 
-BOOST_AFIO_V2_NAMESPACE_END
+BOOST_KERNELTEST_V1_NAMESPACE_END
 
-#if BOOST_AFIO_HEADERS_ONLY == 1 && !defined(DOXYGEN_SHOULD_SKIP_THIS)
-#define BOOST_AFIO_INCLUDED_BY_HEADER 1
-#include "impl/child_process.ipp"
-#undef BOOST_AFIO_INCLUDED_BY_HEADER
+#if BOOST_KERNELTEST_HEADERS_ONLY == 1 && !defined(DOXYGEN_SHOULD_SKIP_THIS)
+#define BOOST_KERNELTEST_INCLUDED_BY_HEADER 1
+#include "detail/impl/child_process.ipp"
+#undef BOOST_KERNELTEST_INCLUDED_BY_HEADER
 #endif
 
 #ifdef _MSC_VER

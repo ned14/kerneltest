@@ -29,34 +29,35 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-#include "../../child_process.hpp"
-#include "import.hpp"
+#include "../../../child_process.hpp"
 
-BOOST_AFIO_V2_NAMESPACE_BEGIN
+extern "C" __declspec(dllimport) errno_t rand_s(unsigned *random);
 
-namespace detail
+BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+
+namespace child_process
 {
   child_process::~child_process()
   {
     wait();
     _deinitialise_files();
     _deinitialise_streams();
-    if(_processh)
+    if(_processh.h)
     {
       CloseHandle(_processh.h);
       _processh.h = nullptr;
     }
-    if(_readh)
+    if(_readh.h)
     {
       CloseHandle(_readh.h);
       _readh.h = nullptr;
     }
-    if(_writeh)
+    if(_writeh.h)
     {
       CloseHandle(_writeh.h);
       _writeh.h = nullptr;
     }
-    if(_errh)
+    if(_errh.h)
     {
       if(!_use_parent_errh)
         CloseHandle(_errh.h);
@@ -64,9 +65,8 @@ namespace detail
     }
   }
 
-  BOOST_AFIO_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path __path, std::vector<stl1z::filesystem::path::string_type> __args, std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> __env, bool use_parent_errh) noexcept
+  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path __path, std::vector<stl1z::filesystem::path::string_type> __args, std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> __env, bool use_parent_errh) noexcept
   {
-    windows_nt_kernel::init();
     using string_type = stl1z::filesystem::path::string_type;
     using char_type = string_type::value_type;
     child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
@@ -92,7 +92,10 @@ namespace detail
       return make_errored_result<child_process>(GetLastError());
       */
       char randomname[] = "\\\\.\\pipe\\pipename";
-      windows_nt_kernel::RtlGenRandom(randomname + 9, 8);
+      rand_s((unsigned *) (randomname + 8));
+      rand_s((unsigned *) (randomname + 12));
+      randomname[16] = randomname[8];
+      randomname[8] = '\\';
       ret._errh.h = CreateNamedPipeA(randomname, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_WRITE_THROUGH, PIPE_TYPE_BYTE, 1, 0, 0, 0, nullptr);
       if(!ret._errh.h)
         return make_errored_result<child_process>(GetLastError());
@@ -101,12 +104,12 @@ namespace detail
         return make_errored_result<child_process>(GetLastError());
     }
 
-    auto unmypipes = detail::Undoer([&] {
+    auto unmypipes = undoer([&] {
       CloseHandle(ret._readh.h);
       CloseHandle(ret._writeh.h);
       CloseHandle(ret._errh.h);
     });
-    auto unhispipes = detail::Undoer([&] {
+    auto unhispipes = undoer([&] {
       CloseHandle(childreadh.h);
       CloseHandle(childwriteh.h);
       if(!use_parent_errh)
@@ -173,40 +176,20 @@ namespace detail
     return retcode == STILL_ACTIVE;
   }
 
-  result<intptr_t> child_process::wait_until(deadline d) noexcept
+  result<intptr_t> child_process::wait_until(stl11::chrono::steady_clock::time_point d) noexcept
   {
-    if(!_processh)
+    if(!_processh.h)
       return -1;
-    windows_nt_kernel::init();
-    using namespace windows_nt_kernel;
-    BOOST_AFIO_WIN_DEADLINE_TO_SLEEP_INIT(d);
-    for(;;)
-    {
-      BOOST_AFIO_WIN_DEADLINE_TO_SLEEP_LOOP(d);
-      NTSTATUS ntstat = NtWaitForSingleObject(_processh.h, true, timeout);
-      switch(ntstat)
-      {
-      case STATUS_ALERTED:
-      case STATUS_USER_APC:
-        // loop
-        break;
-      case STATUS_SUCCESS:
-      {
-        DWORD retcode = 0;
-        if(!GetExitCodeProcess(_processh.h, &retcode))
-          return make_errored_result<intptr_t>(GetLastError());
-        return (intptr_t) retcode;
-      }
-      case STATUS_TIMEOUT:
-      {
-        // Really a timeout?
-        BOOST_AFIO_WIN_DEADLINE_TO_TIMEOUT(intptr_t, d);
-        break;
-      }
-      default:
-        return make_errored_result<intptr_t>(GetLastError());
-      }
-    }
+    DWORD timeout = stl11::chrono::steady_clock::now() > d ? (DWORD) stl11::chrono::duration_cast<stl11::chrono::milliseconds>(stl11::chrono::steady_clock::now() - d).count() : 0;
+    DWORD ret = WaitForSingleObject(_processh.h, timeout);
+    if(WAIT_TIMEOUT == ret)
+      return make_errored_result<intptr_t>(ETIMEDOUT);
+    if(WAIT_OBJECT_0 != ret)
+      return make_errored_result<intptr_t>(GetLastError());
+    DWORD retcode = 0;
+    if(!GetExitCodeProcess(_processh.h, &retcode))
+      return make_errored_result<intptr_t>(GetLastError());
+    return (intptr_t) retcode;
   }
 
   stl1z::filesystem::path current_process_path()
@@ -224,7 +207,7 @@ namespace detail
     using string_type = stl1z::filesystem::path::string_type;
     std::map<string_type, string_type> ret;
     string_type::value_type *strings = GetEnvironmentStrings();
-    auto unstrings = Undoer([strings] { FreeEnvironmentStrings(strings); });
+    auto unstrings = undoer([strings] { FreeEnvironmentStrings(strings); });
     for(auto *s = strings, *e = strings; *s; s = (e = e + 1))
     {
       auto *c = s;
@@ -240,4 +223,4 @@ namespace detail
   }
 }
 
-BOOST_AFIO_V2_NAMESPACE_END
+BOOST_KERNELTEST_V1_NAMESPACE_END
