@@ -108,9 +108,39 @@ namespace child_process
 
   public:
     child_process(const child_process &) = delete;
-    child_process(child_process &&o) = default;
+    child_process(child_process &&o) noexcept : _path(std::move(o._path)),
+                                                _processh(std::move(o._processh)),
+                                                _readh(std::move(o._readh)),
+                                                _writeh(std::move(o._writeh)),
+                                                _errh(std::move(o._errh)),
+                                                _use_parent_errh(std::move(o._use_parent_errh)),
+                                                _args(std::move(o._args)),
+                                                _env(std::move(o._env)),
+                                                _stdin(std::move(o._stdin)),
+                                                _stdout(std::move(o._stdout)),
+                                                _stderr(std::move(o._stderr)),
+                                                _cin(std::move(o._cin)),
+                                                _cout(std::move(o._cout)),
+                                                _cerr(std::move(o._cerr))
+    {
+      o._processh._init = 0;
+      o._readh._init = 0;
+      o._writeh._init = 0;
+      o._errh._init = 0;
+      o._stdin = nullptr;
+      o._stdout = nullptr;
+      o._stderr = nullptr;
+      o._cin = nullptr;
+      o._cout = nullptr;
+      o._cerr = nullptr;
+    }
     child_process &operator=(const child_process &) = delete;
-    child_process &operator=(child_process &&) = default;
+    child_process &operator=(child_process &&o) noexcept
+    {
+      this->~child_process();
+      new(this) child_process(std::move(o));
+      return *this;
+    }
     ~child_process();
 
     //! Launches an executable as a child process. No shell is invoked on POSIX.

@@ -60,6 +60,7 @@ import BOOST_KERNELTEST_MODULE_NAME;
 #include "test_kernel.hpp"
 
 #include "permute_parameters.hpp"
+#include "child_process.hpp"
 
 #include "hooks/custom.hpp"
 #include "hooks/filesystem_workspace.hpp"
