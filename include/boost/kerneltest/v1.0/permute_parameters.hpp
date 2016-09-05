@@ -39,6 +39,11 @@ DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <vector>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 6326)  // comparison of constants
+#endif
+
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace detail
@@ -266,6 +271,10 @@ public:
         nested_f(idx);
 #ifdef _WIN32
       }
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 6320)  // SA warning about catching all exceptions
+#endif
       __except(EXCEPTION_EXECUTE_HANDLER)
       {
         kerneltest_errc code = kerneltest_errc::setup_seh_exception_thrown;
@@ -275,6 +284,9 @@ public:
           code = kerneltest_errc::teardown_seh_exception_thrown;
         results[idx].set_error(error_code_extended(make_error_code(code)));
       }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 #endif
     };
 #ifdef _OPENMP
@@ -546,5 +558,9 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 
 
 BOOST_KERNELTEST_V1_NAMESPACE_END
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif  // namespace
