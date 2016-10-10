@@ -9,7 +9,7 @@ KernelTest is a test runner for your choice of unit test framework, so the idea 
 _test cases_, you write instead _test kernels_ which are simply small functions exercising a
 **minimal set** of your public API. Here's one from AFIO:
 
-```
+```c++
 namespace file_handle_create_close
 {
   BOOST_AFIO_TEST_KERNEL_DECL boost::outcome::result<boost::afio::file_handle> test_kernel_file_handle(boost::afio::file_handle::mode m, boost::afio::file_handle::creation c, boost::afio::file_handle::flag f)
@@ -26,7 +26,7 @@ In the above test kernel only three parameters of the `afio::file_handle::file()
 are exposed. One then has KernelTest call that test kernel many times with a long initialiser
 list of parameter permutations and expected outcomes like this:
 
-```
+```c++
 //  Outcome (void means no error)    Kernel parameter call set                                                                     Preconditions       Postconditions
 {   make_ready_result<void>(),       { file_handle::mode::none,       file_handle::creation::if_needed, file_handle::flag::none }, { "existing1"    }, { "existing1"    }},
 {   make_ready_result<void>(),       { file_handle::mode::attr_read,  file_handle::creation::if_needed, file_handle::flag::none }, { "existing1"    }, { "existing1"    }},
@@ -97,7 +97,7 @@ proper SMT solving symbolic execution engine like say KLEE (https://klee.github.
 Imagine for example this real world function with all its prerequisites minimally
 pasted in front:
 
-```
+```c++
 /* A small standalone program to test whether the permuter works
 */
 
@@ -300,13 +300,17 @@ will follow onto any calculated variables, we cannot necessarily know that a rel
 between a value calculated from input parameters and those input parameters. Even with tainting
 on, we may know a relationship exists but have no idea what it is, it could be highly non linear
 or any old weird thing. Here simple brute force comes into play, we split the valid input range
-into two halves, and if there is change we split again and so on, effectively performing a binary
-search for those input values which cause a compared value to change.
+into two powers ranges, and if there is change between those we split each range in half again and so
+on, effectively performing a binary search for those input values which cause a compared value to change.
+_The chances are_ that most calculations from input parameters to compared parameters which don't use
+divide nor an array index is going to be linear and so this divide and conquer technique will work,
+but I can see some corner cases might slip through. They ought to be fairly rare however.
 
 You can probably see by now that this problem is ultimately recursive, and the total set of
-permutations which must be tried rises very quickly when input parameters have any range on them.
-To that end one can mark up individual parameters with valid ranges using C++ attributes and the
-clang AST parser will ensure that the permuter limits itself to that range.
+permutations which must be tried rises very quickly when input parameters have any range on them
+as total valid permutations is two to the power of the bits of free range. To try and keep down
+the bits of free range, one can mark up individual parameters with valid ranges using C++ attributes
+and the clang AST parser will ensure that the permuter limits itself to that range.
 
 Where KernelTest doesn't do well is on stuff like string input where the set of unique and potentially
 meaningful permutations rises very quickly and this poor man's symbolic execution engine begins
