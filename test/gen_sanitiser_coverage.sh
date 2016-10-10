@@ -1,0 +1,3 @@
+#clang++-4.0 -std=c++1z -shared -fPIC -fvisibility=hidden -o test_output.so coverage_main.cpp -I.. -fsanitize-coverage=trace-pc,indirect-calls -fsanitize-coverage=trace-cmp -fsanitize-coverage=trace-div -fsanitize-coverage=trace-gep
+clang++-4.0 -std=c++1z -O3 -g -o test_output coverage_main.cpp -I.. -fsanitize-coverage=trace-pc,indirect-calls -fsanitize-coverage=trace-cmp -fsanitize-coverage=trace-div -fsanitize-coverage=trace-gep
+objdump -d test_output > test_output.s
