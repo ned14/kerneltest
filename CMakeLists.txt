@@ -22,10 +22,12 @@ ParseProjectVersionFromHpp("${CMAKE_CURRENT_SOURCE_DIR}/include/boost/kerneltest
 project(kerneltest VERSION ${VERSIONSTRING} LANGUAGES C CXX)
 # Also set a *cmake* namespace for this project
 set(PROJECT_NAMESPACE boost--)
-# This file should be updated with the last git SHA next commit
-UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/boost/kerneltest/revision.hpp")
 # Setup this cmake environment for this project
 include(BoostLiteSetupProject)
+if(NOT PROJECT_IS_DEPENDENCY)
+  # This file should be updated with the last git SHA next commit
+  UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/boost/kerneltest/revision.hpp")
+endif()
 # Find my library dependencies
 find_boostish_library(boost-lite "include/boost/kerneltest" 1.0 REQUIRED)
 find_boostish_library(outcome    "include/boost/kerneltest" 1.0 REQUIRED)
