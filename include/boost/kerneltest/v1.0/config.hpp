@@ -22,9 +22,6 @@ File Created: Apr 2016
 #ifndef __cpp_variadic_templates
 #error Boost.KernelTest needs variadic template support in the compiler
 #endif
-#ifndef __cpp_noexcept
-#error Boost.KernelTest needs noexcept support in the compiler
-#endif
 #ifndef __cpp_constexpr
 #error Boost.KernelTest needs constexpr (C++ 11) support in the compiler
 #endif
@@ -219,8 +216,8 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 #endif
 
 
-// Bring in the Boost macro emulations
-#include "../boost-lite/include/boost/config.hpp"
+// Bring in the Boost-lite macros
+#include "../boost-lite/include/config.hpp"
 // Bring in scoped undo
 #include "../boost-lite/include/scoped_undo.hpp"
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
@@ -231,10 +228,10 @@ BOOST_KERNELTEST_V1_NAMESPACE_END
 #if(defined(BOOST_KERNELTEST_DYN_LINK) || defined(BOOST_ALL_DYN_LINK)) && !defined(BOOST_KERNELTEST_STATIC_LINK)
 
 #if defined(BOOST_KERNELTEST_SOURCE)
-#define BOOST_KERNELTEST_DECL BOOST_SYMBOL_EXPORT
+#define BOOST_KERNELTEST_DECL BOOSTLITE_SYMBOL_EXPORT
 #define BOOST_KERNELTEST_BUILD_DLL
 #else
-#define BOOST_KERNELTEST_DECL BOOST_SYMBOL_IMPORT
+#define BOOST_KERNELTEST_DECL BOOSTLITE_SYMBOL_IMPORT
 #endif
 #else
 #define BOOST_KERNELTEST_DECL
@@ -414,7 +411,7 @@ inline const detail::kerneltest_category &kerneltest_category()
 }
 
 //! \brief A kerneltest error object
-class BOOST_SYMBOL_VISIBLE kerneltest_error : public std::system_error
+class BOOSTLITE_SYMBOL_VISIBLE kerneltest_error : public std::system_error
 {
 public:
   kerneltest_error(stl11::error_code ec)
