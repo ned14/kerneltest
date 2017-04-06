@@ -395,7 +395,7 @@ namespace hooks
           differs:
             return leafpath;
           }
-          BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
+          BOOST_OUTCOME_CATCH_ALL_EXCEPTION_TO_RESULT
         });
         // If anything different, return that
         if(ret)
@@ -406,7 +406,7 @@ namespace hooks
         // Otherwise both current and after are identical
         return make_empty_result<stl1z::filesystem::path>();
       }
-      BOOST_OUTCOME_CATCH_EXCEPTION_TO_RESULT(stl1z::filesystem::path)
+      BOOST_OUTCOME_CATCH_ALL_EXCEPTION_TO_RESULT
     }
 
     template <class Parent, class RetType> struct structure_impl
