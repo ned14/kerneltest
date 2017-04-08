@@ -119,8 +119,10 @@ namespace detail
   // If should be has type void, we only care kernel_outcome has a value
   template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<void> &shouldbe)
   {
-    if(kernel_outcome.has_value() && shouldbe.has_value())
+    if (kernel_outcome.has_value() && shouldbe.has_value())
       return kernel_outcome.has_value() == shouldbe.has_value();
+    else if (shouldbe.has_error() && kernel_outcome.has_error())
+      return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
       return kernel_outcome == shouldbe;
   };
@@ -128,6 +130,8 @@ namespace detail
   {
     if(kernel_outcome.has_value() && shouldbe.has_value())
       return kernel_outcome.has_value() == shouldbe.has_value();
+    else if (shouldbe.has_error() && kernel_outcome.has_error())
+      return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
       return kernel_outcome == shouldbe;
   };
@@ -537,7 +541,11 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 {
   // Note that we accumulate failures into the checks vector for later processing
   std::vector<std::function<void()>> checks;
-  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result == shouldbe); }); }), pretty_print_success(permuter));
+  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) {
+    checks.push_back([&] {
+      BOOST_CHECK(result == shouldbe);
+    });
+  }), pretty_print_success(permuter));
   BOOST_CHECK(all_passed);
   // The pretty printing gets messed up by the unit test output, so defer telling it
   // about failures until now
