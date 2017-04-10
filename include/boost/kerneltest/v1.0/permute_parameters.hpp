@@ -480,7 +480,7 @@ namespace detail
         , _f(std::forward<V>(f))
     {
     }
-    template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
+    template <class _T, class _U> bool operator()(size_t idx, const _T &result, const _U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
       pretty_print_preamble(_permuter, idx);
@@ -501,7 +501,7 @@ namespace detail
         , _f(std::forward<V>(f))
     {
     }
-    template <class T, class U> bool operator()(size_t idx, const T &result, const U &shouldbe) const
+    template <class _T, class _U> bool operator()(size_t idx, const _T &result, const _U &shouldbe) const
     {
       using namespace boost_lite::console_colours;
       pretty_print_preamble(_permuter, idx);

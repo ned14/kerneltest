@@ -53,14 +53,23 @@ File Created: Apr 2016
 #define BOOST_KERNELTEST_USE_BOOST_THREAD 0
 #endif
 #endif
-// Default to the C++ 11 STL if on MSVC (Dinkumware ships a copy), else Boost
-#ifndef BOOST_KERNELTEST_USE_BOOST_FILESYSTEM
-#if _MSC_VER >= 1900  // >= VS 14
-#define BOOST_KERNELTEST_USE_BOOST_FILESYSTEM 0
+// Default to the C++ 11 STL if on VS2015 or has <experimental/filesystem>
+#ifndef BOOST_AFIO_USE_BOOST_FILESYSTEM
+#ifdef __has_include
+// clang-format off
+#if __has_include(<filesystem>) || __has_include(<experimental/filesystem>)
+// clang-format on
+#define BOOST_AFIO_USE_BOOST_FILESYSTEM 0
 #endif
 #endif
-#ifndef BOOST_KERNELTEST_USE_BOOST_FILESYSTEM
-#define BOOST_KERNELTEST_USE_BOOST_FILESYSTEM 1
+#if !defined(BOOST_AFIO_USE_BOOST_FILESYSTEM) && _MSC_VER >= 1900 /* >= VS2015 */
+#define BOOST_AFIO_USE_BOOST_FILESYSTEM 0
+#endif
+#endif
+#ifndef BOOST_AFIO_USE_BOOST_FILESYSTEM
+//! \brief Whether to use Boost.Filesystem instead of the C++ 17 TS `std::filesystem`.
+//! Defaults to the C++ 17 TS filesystem if that is available, else Boost. \ingroup config
+#define BOOST_AFIO_USE_BOOST_FILESYSTEM 1
 #endif
 #if BOOST_KERNELTEST_USE_BOOST_FILESYSTEM
 #define BOOST_KERNELTEST_V1_FILESYSTEM_IMPL boost
