@@ -31,10 +31,15 @@ DEALINGS IN THE SOFTWARE.
 
 #include "../../../child_process.hpp"
 
+#include <limits.h>
 #include <fcntl.h>
 #include <spawn.h>
 #include <unistd.h>
 #include <sys/wait.h>
+
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif
 
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
@@ -92,7 +97,7 @@ namespace child_process
 
     if(use_parent_errh)
     {
-      childerrh.h = 2;  // stderr
+      childerrh.fd = 2;  // stderr
     }
     else
     {
@@ -129,8 +134,8 @@ namespace child_process
 
     std::vector<const char *> argptrs(ret._args.size() + 2);
     argptrs[0] = ret._path.c_str();
-    for(size_t n = 0; n < ret._argptrs.size(); ++n)
-      argptrs[n + 1] = ret._argptrs[n].c_str();
+    for(size_t n = 0; n < ret._args.size(); ++n)
+      argptrs[n + 1] = ret._args[n].c_str();
     std::vector<std::string> envs;
     std::vector<const char *> envptrs;
     envs.reserve(ret._env.size());
@@ -138,11 +143,11 @@ namespace child_process
     for(const auto &i : ret._env)
     {
       envs.push_back(i.first + "=" + i.second);
-      envptrs.push_back(envs.last().c_str());
+      envptrs.push_back(envs.back().c_str());
     }
     envptrs.push_back(nullptr);
     if(-1 == ::posix_spawn(&ret._processh.fd, ret._path.c_str(), nullptr, nullptr,
-      argptrs.data(), envptrs.data()))
+      (char **) argptrs.data(), (char **) envptrs.data()))
       return make_errored_result<child_process>(errno);
     unmypipes.dismiss();
 
@@ -163,10 +168,10 @@ namespace child_process
   result<intptr_t> child_process::wait_until(stl11::chrono::steady_clock::time_point d) noexcept
   {
     intptr_t ret = 0;
-    auto check_child = [&] {
+    auto check_child = [&]() -> result<bool> {
       int stat = 0;
       if(-1 == ::waitpid(_processh.pid, &stat, d != stl11::chrono::steady_clock::time_point() ? WNOHANG : 0))
-        return make_errored_result<intptr_t>(errno);
+        return make_errored_result<>(errno);
       if(WIFEXITED(stat))
         ret = WEXITSTATUS(stat);
       if(WIFSIGNALED(stat))
@@ -188,9 +193,11 @@ namespace child_process
     // If he specified a timeout, we now have considerable work to do in order to do this race free
     // Firstly install a signal handler for SIGCHLD
     std::atomic<bool> child_exited(false);
-    auto signal_handler=[&child_exited](int sig) { child_exited = true; }
+    auto signal_handler=[&child_exited](int sig) { child_exited = true; }  // FIXME we might get the signal for a different pid to ours for another wait on another thread
     
-    // Now do a timed wait
+    // Check our child process hasn't exited in the meantime
+    
+    // Now do a timed wait until a SIGCHLD comes through
     sigset_t set;
     siginfo_t siginfo;
     struct timespec ts_, *ts = nullptr;
@@ -220,10 +227,45 @@ namespace child_process
 
   stl1z::filesystem::path current_process_path()
   {
+    char buffer[PATH_MAX+1];
+#ifdef __linux__
+    // Read what the symbolic link at /proc/self/exe points at
+    ssize_t len = ::readlink("/proc/self/exe", buffer, PATH_MAX);
+    if(len > 0)
+    {
+      buffer[len] = 0;
+      return stl1z::filesystem::path::string_type(buffer, len);
+    }
+#elif defined(__FreeBSD__)
+    int mib[4]={CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, getpid()};
+    size_t len = PATH_MAX;
+    int ret = sysctl(mib, 4, buffer, &len, NULL, 0);
+    if(ret > 0)
+    {
+      buffer[len] = 0;
+      return stl1z::filesystem::path::string_type(buffer, len);
+    }
+#else
+#error Unknown platform
+#endif
+    fprintf(stderr, "FATAL: child_process::current_process_path() failed with code %d\n", errno);
+    abort();
   }
 
   std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> current_process_env()
   {
+#ifdef __linux__
+    char **environ = __environ;
+#endif
+    std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> ret;
+    for(char **env = environ; *env; ++env)
+    {
+      char *equals = strchr(*env, '=');
+      char *end = strchr(*env, 0);
+      if(!equals) equals = end;
+      ret.insert(std::make_pair(stl1z::filesystem::path::string_type(*env, equals - *env), stl1z::filesystem::path::string_type(equals + 1, end - equals)));
+    }
+    return ret;
   }
 
 }
