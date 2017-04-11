@@ -49,22 +49,22 @@ namespace child_process
     }
     _deinitialise_files();
     _deinitialise_streams();
-    if(_processh.h)
+    if(_processh)
     {
       CloseHandle(_processh.h);
       _processh.h = nullptr;
     }
-    if(_readh.h)
+    if(_readh)
     {
       CloseHandle(_readh.h);
       _readh.h = nullptr;
     }
-    if(_writeh.h)
+    if(_writeh)
     {
       CloseHandle(_writeh.h);
       _writeh.h = nullptr;
     }
-    if(_errh.h)
+    if(_errh)
     {
       if(!_use_parent_errh)
         CloseHandle(_errh.h);

@@ -55,10 +55,24 @@ namespace child_process
 
   //! A native handle type
   union native_handle_type {
-    intptr_t _init;
     int fd;         //!< A POSIX file descriptor
     int pid;        //!< A POSIX process identifier
     win::handle h;  //!< A Windows HANDLE
+    
+    constexpr native_handle_type() noexcept :
+#ifdef _WIN32
+    h(nullptr)
+#else
+    fd(-1)
+#endif
+     { }
+     explicit operator bool() const noexcept {
+#ifdef _WIN32
+       return h != nullptr;
+#else
+       return fd != -1;
+#endif
+     }
   };
 
   //! Returns the path of the calling process
@@ -123,10 +137,10 @@ namespace child_process
                                                 _cout(std::move(o._cout)),
                                                 _cerr(std::move(o._cerr))
     {
-      o._processh._init = 0;
-      o._readh._init = 0;
-      o._writeh._init = 0;
-      o._errh._init = 0;
+      o._processh = native_handle_type();
+      o._readh = native_handle_type();
+      o._writeh = native_handle_type();
+      o._errh = native_handle_type();
       o._stdin = nullptr;
       o._stdout = nullptr;
       o._stderr = nullptr;

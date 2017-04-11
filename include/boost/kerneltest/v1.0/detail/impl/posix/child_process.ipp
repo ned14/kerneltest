@@ -31,19 +31,201 @@ DEALINGS IN THE SOFTWARE.
 
 #include "../../../child_process.hpp"
 
+#include <fcntl.h>
+#include <spawn.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
 BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace child_process
 {
-  child_process::~child_process();
+  child_process::~child_process()
+  {
+    wait();
+    if(_stdin || _cin)
+    {
+      // Handles are already closed, no need to do so again
+      _readh.fd = -1;
+      _writeh.fd = -1;
+      _errh.fd = -1;
+    }
+    _deinitialise_files();
+    _deinitialise_streams();
+    if(_processh)
+    {
+      ::close(_processh.fd);
+      _processh.fd = -1;
+    }
+    if(_readh)
+    {
+      ::close(_readh.fd);
+      _readh.fd = -1;
+    }
+    if(_writeh)
+    {
+      ::close(_writeh.fd);
+      _writeh.fd = -1;
+    }
+    if(_errh)
+    {
+      if(!_use_parent_errh)
+        ::close(_errh.fd);
+      _errh.fd = -1;
+    }
+  }
 
-  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path path) noexcept;
+  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(stl1z::filesystem::path __path, std::vector<stl1z::filesystem::path::string_type> __args, std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> __env, bool use_parent_errh) noexcept
+  {
+    child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
+    native_handle_type childreadh, childwriteh, childerrh;
 
-  bool child_process::is_running() const noexcept;
+    int temp[2];
+    if(-1 == ::pipe(temp))
+      return make_errored_result<child_process>(errno);
+    childreadh.fd = temp[0];
+    ret._readh.fd = temp[1];
+    if(-1 == ::pipe(temp))
+      return make_errored_result<child_process>(errno);
+    ret._writeh.fd = temp[0];
+    childwriteh.fd = temp[1];
 
-  result<intptr_t> child_process::wait_until(deadline d) noexcept;
+    if(use_parent_errh)
+    {
+      childerrh.h = 2;  // stderr
+    }
+    else
+    {
+      if(-1 == ::pipe(temp))
+        return make_errored_result<child_process>(errno);
+      ret._errh.fd = temp[0];
+      childerrh.fd = temp[1];
+    }
 
-  BOOST_KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC stl1z::filesystem::path child_process::current_process_path();
+    auto unmypipes = undoer([&] {
+      ::close(ret._readh.fd);
+      ret._readh.fd = -1;
+      ::close(ret._writeh.fd);
+      ret._writeh.fd = -1;
+      if(!use_parent_errh)
+      {
+        ::close(ret._errh.fd);
+        ret._errh.fd = -1;
+      }
+    });
+    auto unhispipes = undoer([&] {
+      ::close(childreadh.fd);
+      ::close(childwriteh.fd);
+      if(!use_parent_errh)
+        ::close(childerrh.fd);
+    });
+
+    if(-1 == ::fcntl(ret._readh.fd, F_SETFD, FD_CLOEXEC))
+      return make_errored_result<child_process>(errno);
+    if(-1 == ::fcntl(ret._writeh.fd, F_SETFD, FD_CLOEXEC))
+      return make_errored_result<child_process>(errno);
+    if(!use_parent_errh && -1 == ::fcntl(ret._errh.fd, F_SETFD, FD_CLOEXEC))
+      return make_errored_result<child_process>(errno);
+
+    std::vector<const char *> argptrs(ret._args.size() + 2);
+    argptrs[0] = ret._path.c_str();
+    for(size_t n = 0; n < ret._argptrs.size(); ++n)
+      argptrs[n + 1] = ret._argptrs[n].c_str();
+    std::vector<std::string> envs;
+    std::vector<const char *> envptrs;
+    envs.reserve(ret._env.size());
+    envptrs.reserve(ret._env.size() + 1);
+    for(const auto &i : ret._env)
+    {
+      envs.push_back(i.first + "=" + i.second);
+      envptrs.push_back(envs.last().c_str());
+    }
+    envptrs.push_back(nullptr);
+    if(-1 == ::posix_spawn(&ret._processh.fd, ret._path.c_str(), nullptr, nullptr,
+      argptrs.data(), envptrs.data()))
+      return make_errored_result<child_process>(errno);
+    unmypipes.dismiss();
+
+    // Wait until the primary thread has launched
+    ::usleep(30 * 1000);
+
+    return std::move(ret);
+  }
+
+  bool child_process::is_running() const noexcept
+  {
+    int stat = 0;
+    if(-1 == ::waitpid(_processh.pid, &stat, WNOHANG))
+      return false;
+    return !WIFEXITED(stat) && !WIFSIGNALED(stat) && !WIFSTOPPED(stat);
+  }
+
+  result<intptr_t> child_process::wait_until(stl11::chrono::steady_clock::time_point d) noexcept
+  {
+    intptr_t ret = 0;
+    auto check_child = [&] {
+      int stat = 0;
+      if(-1 == ::waitpid(_processh.pid, &stat, d != stl11::chrono::steady_clock::time_point() ? WNOHANG : 0))
+        return make_errored_result<intptr_t>(errno);
+      if(WIFEXITED(stat))
+        ret = WEXITSTATUS(stat);
+      if(WIFSIGNALED(stat))
+        ret = -99;
+      if(WIFSTOPPED(stat))
+        ret = -98;
+      return !WIFEXITED(stat) && !WIFSIGNALED(stat) && !WIFSTOPPED(stat);
+    };
+    // Do an initial check, if no timeout was specified this will block until child is done
+    {
+      BOOST_OUTCOME_TRY(running, check_child());
+      if(!running)
+        return ret;
+    }
+#if 1
+    // TODO FIXME: Implement timed waits for child processes to exit
+    return make_errored_result<intptr_t>(EOPNOTSUPP);
+#else
+    // If he specified a timeout, we now have considerable work to do in order to do this race free
+    // Firstly install a signal handler for SIGCHLD
+    std::atomic<bool> child_exited(false);
+    auto signal_handler=[&child_exited](int sig) { child_exited = true; }
+    
+    // Now do a timed wait
+    sigset_t set;
+    siginfo_t siginfo;
+    struct timespec ts_, *ts = nullptr;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    if(d != stl11::chrono::steady_clock::time_point())
+    {
+      auto timeout = (stl11::chrono::steady_clock::now() > d) ? (DWORD) stl11::chrono::duration_cast<stl11::chrono::nanoseconds>(stl11::chrono::steady_clock::now() - d).count() : 0;
+      ts_.tv_sec = timeout / 1000000000ULL;
+      ts_.tv_nsec = timeout % 1000000000ULL;
+      ts = &ts_;
+    }
+    int signal;
+    do
+    {
+      signal = sigtimedwait(&set, &siginfo, ts);
+    } while(signal < 0 && errno == EINTR);
+    if(signal < 0)
+    {
+      if(EAGAIN == errno && d != stl11::chrono::steady_clock::time_point())
+        return make_errored_result<intptr_t>(ETIMEDOUT);
+      return make_errored_result<intptr_t>(errno);
+    }
+#endif
+  }
+
+  stl1z::filesystem::path current_process_path()
+  {
+  }
+
+  std::map<stl1z::filesystem::path::string_type, stl1z::filesystem::path::string_type> current_process_env()
+  {
+  }
+
 }
 
 BOOST_KERNELTEST_V1_NAMESPACE_END
