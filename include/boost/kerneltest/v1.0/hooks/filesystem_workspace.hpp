@@ -219,8 +219,9 @@ namespace hooks
         auto begin = stl11::chrono::steady_clock::now();
         do
         {
+          ec.clear();
           bool exists = stl1z::filesystem::exists(_current, ec);
-          if(!ec && !exists)
+          if(!exists && (!ec || ec == stl11::errc::no_such_file_or_directory))
             return;
           stl1z::filesystem::remove_all(_current, ec);
         } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
@@ -247,7 +248,7 @@ namespace hooks
         };
         // Is the input workspace no workspace? In which case create an empty directory
         bool exists = stl1z::filesystem::exists(template_path, ec);
-        if(ec)
+        if(ec && ec != stl11::errc::no_such_file_or_directory)
           fatalexit();
         if(!exists)
         {
