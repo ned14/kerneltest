@@ -426,11 +426,11 @@ namespace detail
         BOOST_KERNELTEST_COUT(", ");
       // Fetch the hook parameter set for this hook
       using hook_pars_type = typename Permuter::template parameter_type<1 + Idx>;
-#ifdef __c2__  // c2 be buggy
-      const auto &hook_pars = std::get<2 + Idx>(_v);
-#else
-      const auto &hook_pars = Permuter::parameter_value<1 + Idx>(_v);
-#endif
+//#ifdef __c2__  // c2 be buggy
+//      const auto &hook_pars = std::get<2 + Idx>(_v);
+//#else
+      const auto &hook_pars = Permuter::template parameter_value<1 + Idx>(_v);
+//#endif
       // Each hook instantiator exposes a member function print(...) which takes
       // the same args as the hook instance
       detail::call_f_with_parameters([&v](const auto &... vs) { BOOST_KERNELTEST_COUT(v.print(vs...)); }, hook_pars, std::make_index_sequence<parameters_size<hook_pars_type>::value>());

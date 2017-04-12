@@ -34,6 +34,8 @@ DEALINGS IN THE SOFTWARE.
 #include <fcntl.h>
 #ifdef _MSC_VER
 #include <io.h>
+#else
+#include <unistd.h>
 #endif
 
 #ifdef _MSC_VER
