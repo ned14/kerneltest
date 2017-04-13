@@ -314,22 +314,25 @@ namespace hooks
     //! Walk a directory hierarchy, depth first. f(directory_entry) can return something to early exit.
     template <class U> inline auto depth_first_walk(stl1z::filesystem::path path, U &&f) -> decltype(f(std::declval<stl1z::filesystem::directory_entry>()))
     {
-      for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
+      if(stl1z::filesystem::exists(path))
       {
-        if(stl1z::filesystem::is_directory(it->status()))
+        for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
         {
-          auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
-          if(ret)
-            return ret;
+          if(stl1z::filesystem::is_directory(it->status()))
+          {
+            auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
+            if(ret)
+              return ret;
+          }
         }
-      }
-      for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
-      {
-        if(!stl1z::filesystem::is_directory(it->status()))
+        for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
         {
-          auto ret(f(*it));
-          if(ret)
-            return ret;
+          if(!stl1z::filesystem::is_directory(it->status()))
+          {
+            auto ret(f(*it));
+            if(ret)
+              return ret;
+          }
         }
       }
       // Return default constructed edition of the type returned by the callable

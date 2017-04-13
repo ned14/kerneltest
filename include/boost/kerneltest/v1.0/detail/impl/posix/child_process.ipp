@@ -33,7 +33,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include <limits.h>
 #include <fcntl.h>
-#include <spawn.h>
+#include <signal.h>  // for siginfo_t
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -47,7 +47,7 @@ namespace child_process
 {
   child_process::~child_process()
   {
-    wait();
+    (void) wait();
     if(_stdin || _cin)
     {
       // Handles are already closed, no need to do so again
@@ -97,7 +97,7 @@ namespace child_process
 
     if(use_parent_errh)
     {
-      childerrh.fd = 2;  // stderr
+      childerrh.fd = STDERR_FILENO;
     }
     else
     {
@@ -146,8 +146,17 @@ namespace child_process
       envptrs.push_back(envs.back().c_str());
     }
     envptrs.push_back(nullptr);
-    if(-1 == ::posix_spawn(&ret._processh.fd, ret._path.c_str(), nullptr, nullptr,
-      (char **) argptrs.data(), (char **) envptrs.data()))
+    ret._processh.fd = ::fork();
+    if(0 == ret._processh.fd)
+    {
+      // I am the child
+      ::dup2(childreadh.fd, STDIN_FILENO);
+      ::dup2(childwriteh.fd, STDOUT_FILENO);
+      if(!use_parent_errh)
+        ::dup2(childerrh.fd, STDERR_FILENO);
+      ::exit(::execve(ret._path.c_str(), (char **) argptrs.data(), (char **) envptrs.data()));
+    }
+    if(-1 == ret._processh.fd)
       return make_errored_result<child_process>(errno);
     unmypipes.dismiss();
 
@@ -159,26 +168,34 @@ namespace child_process
 
   bool child_process::is_running() const noexcept
   {
-    int stat = 0;
-    if(-1 == ::waitpid(_processh.pid, &stat, WNOHANG))
+    if(!_processh)
       return false;
-    return !WIFEXITED(stat) && !WIFSIGNALED(stat) && !WIFSTOPPED(stat);
+    siginfo_t info;
+    memset(&info, 0, sizeof(info));
+    if(-1 == ::waitid(P_PID, _processh.pid, &info, WNOHANG|WNOWAIT))
+      return false;
+    return info.si_pid != 0;
   }
 
   result<intptr_t> child_process::wait_until(stl11::chrono::steady_clock::time_point d) noexcept
   {
+    if(!_processh)
+      return make_errored_result<intptr_t>(ECHILD);
     intptr_t ret = 0;
     auto check_child = [&]() -> result<bool> {
-      int stat = 0;
-      if(-1 == ::waitpid(_processh.pid, &stat, d != stl11::chrono::steady_clock::time_point() ? WNOHANG : 0))
+      siginfo_t info;
+      memset(&info, 0, sizeof(info));
+      int options = WEXITED|WSTOPPED;
+      if(d != stl11::chrono::steady_clock::time_point())
+        options |= WNOHANG;
+      if(-1 == ::waitid(P_PID, _processh.pid, &info, options))
         return make_errored_result<>(errno);
-      if(WIFEXITED(stat))
-        ret = WEXITSTATUS(stat);
-      if(WIFSIGNALED(stat))
-        ret = -99;
-      if(WIFSTOPPED(stat))
-        ret = -98;
-      return !WIFEXITED(stat) && !WIFSIGNALED(stat) && !WIFSTOPPED(stat);
+      if(info.si_signo == SIGCHLD)
+      {
+        ret = info.si_status;
+        return false;
+      }
+      return true;
     };
     // Do an initial check, if no timeout was specified this will block until child is done
     {
