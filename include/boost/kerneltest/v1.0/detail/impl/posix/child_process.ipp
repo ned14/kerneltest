@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include <limits.h>
 #include <fcntl.h>
 #include <signal.h>  // for siginfo_t
+#include <spawn.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -46,8 +47,11 @@ BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
 namespace child_process
 {
   child_process::~child_process()
-  {
-    (void) wait();
+  { 
+    if(_processh)
+    {
+      (void) wait();
+    }
     if(_stdin || _cin)
     {
       // Handles are already closed, no need to do so again
@@ -57,11 +61,6 @@ namespace child_process
     }
     _deinitialise_files();
     _deinitialise_streams();
-    if(_processh)
-    {
-      ::close(_processh.fd);
-      _processh.fd = -1;
-    }
     if(_readh)
     {
       ::close(_readh.fd);
@@ -146,18 +145,73 @@ namespace child_process
       envptrs.push_back(envs.back().c_str());
     }
     envptrs.push_back(nullptr);
+#if 0
     ret._processh.fd = ::fork();
     if(0 == ret._processh.fd)
     {
       // I am the child
-      ::dup2(childreadh.fd, STDIN_FILENO);
-      ::dup2(childwriteh.fd, STDOUT_FILENO);
+      if(-1 == ::dup2(childreadh.fd, STDIN_FILENO))
+      {
+        ::perror("dup2 readh");
+        ::exit(1);
+      }
+      ::close(childreadh.fd);
+      if(-1 == ::dup2(childwriteh.fd, STDOUT_FILENO))
+      {
+        ::perror("dup2 writeh");
+        ::exit(1);
+      }
+      ::close(childwriteh.fd);
       if(!use_parent_errh)
-        ::dup2(childerrh.fd, STDERR_FILENO);
-      ::exit(::execve(ret._path.c_str(), (char **) argptrs.data(), (char **) envptrs.data()));
+      {
+        if(-1 == ::dup2(childerrh.fd, STDERR_FILENO))
+        {
+          ::perror("dup2 errh");
+          ::exit(1);
+        }
+        ::close(childerrh.fd);
+      }
+      if(-1 == ::execve(ret._path.c_str(), (char **) argptrs.data(), (char **) envptrs.data()))
+      {
+        ::perror("execve");
+        ::exit(1);
+      }
     }
     if(-1 == ret._processh.fd)
       return make_errored_result<child_process>(errno);
+#else
+    posix_spawn_file_actions_t child_fd_actions;
+    int err = ::posix_spawn_file_actions_init(&child_fd_actions);
+    if(err)
+      return make_errored_result<child_process>(err);
+    err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childreadh.fd, STDIN_FILENO);
+    if(err)
+      return make_errored_result<child_process>(err);
+    //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childreadh.fd);
+    //if(err)
+    //  return make_errored_result<child_process>(err);
+    err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childwriteh.fd, STDOUT_FILENO);
+    if(err)
+      return make_errored_result<child_process>(err);
+    //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childwriteh.fd);
+    //if(err)
+    //  return make_errored_result<child_process>(err);
+    if(!use_parent_errh)
+    {
+      err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childerrh.fd, STDERR_FILENO);
+      if(err)
+        return make_errored_result<child_process>(err);
+      //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childerrh.fd);
+      //if(err)
+      //  return make_errored_result<child_process>(err);
+    }
+    err = ::posix_spawn(&ret._processh.pid, ret._path.c_str(), &child_fd_actions, nullptr, (char **) argptrs.data(), (char **) envptrs.data());
+    if(err)
+      return make_errored_result<child_process>(err);    
+    auto unfdactions = undoer([&] {
+      ::posix_spawn_file_actions_destroy(&child_fd_actions);
+    });
+#endif
     unmypipes.dismiss();
 
     // Wait until the primary thread has launched
