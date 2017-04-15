@@ -240,7 +240,14 @@ namespace child_process
       siginfo_t info;
       memset(&info, 0, sizeof(info));
       int options = WEXITED|WSTOPPED;
-      if(d != stl11::chrono::steady_clock::time_point())
+      /* There appears to be some race here if I don't install a handler for SIGCHLD
+      because it would appear that zombie child processing only occurs once on entry
+      to waitid(), and then it goes to sleep forever. So, stupidly, we poll for zombie
+      children instead and this appears to work. POSIX really sucks in this part, as
+      a library I can't be globally installing signal handlers, but without you get stupid
+      code like the below with no alternative.
+      */
+      //if(d != stl11::chrono::steady_clock::time_point())
         options |= WNOHANG;
       if(-1 == ::waitid(P_PID, _processh.pid, &info, options))
         return make_errored_result<>(errno);
@@ -251,16 +258,17 @@ namespace child_process
       }
       return true;
     };
-    // Do an initial check, if no timeout was specified this will block until child is done
+    // TODO FIXME: Implement proper timed waits for child processes to exit
+    do
     {
+      // If timeout is not set, this will block forever
       BOOST_OUTCOME_TRY(running, check_child());
       if(!running)
         return ret;
-    }
-#if 1
-    // TODO FIXME: Implement timed waits for child processes to exit
-    return make_errored_result<intptr_t>(EOPNOTSUPP);
-#else
+      stl11::this_thread::sleep_for(stl11::chrono::milliseconds(100));
+    } while(d == stl11::chrono::steady_clock::time_point() || stl11::chrono::steady_clock::now() < d);
+    return make_errored_result<intptr_t>(ETIMEDOUT);
+#if 0
     // If he specified a timeout, we now have considerable work to do in order to do this race free
     // Firstly install a signal handler for SIGCHLD
     std::atomic<bool> child_exited(false);
