@@ -196,7 +196,7 @@ namespace child_process
     DWORD timeout = INFINITE;
     if(d != stl11::chrono::steady_clock::time_point())
     {
-      timeout = (stl11::chrono::steady_clock::now() > d) ? (DWORD) stl11::chrono::duration_cast<stl11::chrono::milliseconds>(stl11::chrono::steady_clock::now() - d).count() : 0;
+      timeout = (stl11::chrono::steady_clock::now() < d) ? (DWORD) stl11::chrono::duration_cast<stl11::chrono::milliseconds>(d - stl11::chrono::steady_clock::now()).count() : 0;
     }
     DWORD ret = WaitForSingleObject(_processh.h, timeout);
     if(WAIT_TIMEOUT == ret)
