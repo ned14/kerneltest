@@ -52,13 +52,6 @@ namespace child_process
     {
       (void) wait();
     }
-    if(_stdin || _cin)
-    {
-      // Handles are already closed, no need to do so again
-      _readh.fd = -1;
-      _writeh.fd = -1;
-      _errh.fd = -1;
-    }
     _deinitialise_files();
     _deinitialise_streams();
     if(_readh)
@@ -187,23 +180,23 @@ namespace child_process
     err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childreadh.fd, STDIN_FILENO);
     if(err)
       return make_errored_result<child_process>(err);
-    //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childreadh.fd);
-    //if(err)
-    //  return make_errored_result<child_process>(err);
+    err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childreadh.fd);
+    if(err)
+      return make_errored_result<child_process>(err);
     err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childwriteh.fd, STDOUT_FILENO);
     if(err)
       return make_errored_result<child_process>(err);
-    //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childwriteh.fd);
-    //if(err)
-    //  return make_errored_result<child_process>(err);
+    err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childwriteh.fd);
+    if(err)
+      return make_errored_result<child_process>(err);
     if(!use_parent_errh)
     {
       err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childerrh.fd, STDERR_FILENO);
       if(err)
         return make_errored_result<child_process>(err);
-      //err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childerrh.fd);
-      //if(err)
-      //  return make_errored_result<child_process>(err);
+      err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childerrh.fd);
+      if(err)
+        return make_errored_result<child_process>(err);
     }
     err = ::posix_spawn(&ret._processh.pid, ret._path.c_str(), &child_fd_actions, nullptr, (char **) argptrs.data(), (char **) envptrs.data());
     if(err)
@@ -240,14 +233,7 @@ namespace child_process
       siginfo_t info;
       memset(&info, 0, sizeof(info));
       int options = WEXITED|WSTOPPED;
-      /* There appears to be some race here if I don't install a handler for SIGCHLD
-      because it would appear that zombie child processing only occurs once on entry
-      to waitid(), and then it goes to sleep forever. So, stupidly, we poll for zombie
-      children instead and this appears to work. POSIX really sucks in this part, as
-      a library I can't be globally installing signal handlers, but without you get stupid
-      code like the below with no alternative.
-      */
-      //if(d != stl11::chrono::steady_clock::time_point())
+      if(d != stl11::chrono::steady_clock::time_point())
         options |= WNOHANG;
       if(-1 == ::waitid(P_PID, _processh.pid, &info, options))
         return make_errored_result<>(errno);
