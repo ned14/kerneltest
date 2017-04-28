@@ -21,7 +21,7 @@ ParseProjectVersionFromHpp("${CMAKE_CURRENT_SOURCE_DIR}/include/boost/kerneltest
 # Sets the usual PROJECT_NAME etc
 project(kerneltest VERSION ${VERSIONSTRING} LANGUAGES C CXX)
 # Also set a *cmake* namespace for this project
-set(PROJECT_NAMESPACE boost--)
+set(PROJECT_NAMESPACE boost::)
 # Setup this cmake environment for this project
 include(BoostLiteSetupProject)
 if(NOT PROJECT_IS_DEPENDENCY)
@@ -77,7 +77,7 @@ if(CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
   all_compile_definitions(PUBLIC BOOST_KERNELTEST_HAVE_AGGREGATE_TUPLE=1)
 endif()
 # Set the library dependencies this library has
-target_link_libraries(kerneltest_hl INTERFACE boost-lite_hl)
+target_link_libraries(kerneltest_hl INTERFACE boost-lite::hl boost::outcome::hl)
 
 # For all possible configurations of this library, add each test
 include(BoostLiteMakeStandardTests)
