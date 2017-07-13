@@ -18,7 +18,7 @@ if(NOT PROJECT_IS_DEPENDENCY)
 endif()
 # Find my library dependencies
 find_quickcpplib_library(quickcpplib 1.0 REQUIRED)
-find_quickcpplib_library(outcome 1.0 REQUIRED)
+find_quickcpplib_library(outcome 2.0 REQUIRED)
 
 # Make an interface only library so dependent CMakeLists can bring in this header-only library
 include(QuickCppLibMakeHeaderOnlyLibrary)
