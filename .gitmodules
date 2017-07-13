@@ -1,13 +1,13 @@
-[submodule "include/boost/kerneltest/boost-lite"]
-	path = include/kerneltest/boost-lite
-	url = https://github.com/ned14/boost-lite.git
+[submodule "include/kerneltest/outcome"]
+	path = include/kerneltest/outcome
+	url = https://github.com/ned14/boost.outcome.git
 	branch = master
 	fetchRecurseSubmodules = true
 	ignore = untracked
 #	shallow = true
-[submodule "include/boost/kerneltest/outcome"]
-	path = include/kerneltest/outcome
-	url = https://github.com/ned14/boost.outcome.git
+[submodule "include/kerneltest/quickcpplib"]
+	path = include/kerneltest/quickcpplib
+	url = https://github.com/ned14/quickcpplib.git
 	branch = master
 	fetchRecurseSubmodules = true
 	ignore = untracked
