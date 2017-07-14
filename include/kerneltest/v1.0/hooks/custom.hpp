@@ -24,10 +24,10 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "../config.hpp"
 
-#ifndef BOOST_KERNELTEST_HOOKS_CUSTOM_HPP
-#define BOOST_KERNELTEST_HOOKS_CUSTOM_HPP
+#ifndef KERNELTEST_HOOKS_CUSTOM_HPP
+#define KERNELTEST_HOOKS_CUSTOM_HPP
 
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace hooks
 {
@@ -99,6 +99,6 @@ namespace hooks
   template <class U, class V> inline auto custom(U &&onbegin, V &&onfinish, std::string description) { return custom_impl::inst<U, V>{std::forward<U>(onbegin), std::forward<V>(onfinish), std::move(description)}; }
 }
 
-BOOST_KERNELTEST_V1_NAMESPACE_END
+KERNELTEST_V1_NAMESPACE_END
 
 #endif

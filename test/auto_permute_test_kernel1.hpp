@@ -1,7 +1,7 @@
 /* A small standalone program to test whether the permuter works
 */
 
-#include "../outcome/include/boost/outcome.hpp"
+#include "../outcome/include/outcome.hpp"
 #include <fcntl.h>
 #include <memory>
 #include <string>
@@ -9,7 +9,7 @@
 
 namespace file_create
 {
-  using namespace BOOST_OUTCOME_V1_NAMESPACE;
+  using namespace OUTCOME_V2_NAMESPACE;
   struct handle_type
   {
     int fd;

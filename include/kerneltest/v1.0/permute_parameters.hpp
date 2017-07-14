@@ -24,11 +24,11 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "config.hpp"
 
-#ifndef BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
-#define BOOST_KERNELTEST_PERMUTE_PARAMETERS_HPP
+#ifndef KERNELTEST_PERMUTE_PARAMETERS_HPP
+#define KERNELTEST_PERMUTE_PARAMETERS_HPP
 
-#include "../boost-lite/include/console_colours.hpp"
-#include "../boost-lite/include/type_traits.hpp"
+#include "../quickcpplib/include/console_colours.hpp"
+#include "../quickcpplib/include/type_traits.hpp"
 
 #include <array>
 #include <vector>
@@ -38,7 +38,7 @@ Distributed under the Boost Software License, Version 1.0.
 #pragma warning(disable : 6326)  // comparison of constants
 #endif
 
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace detail
 {
@@ -108,14 +108,13 @@ namespace detail
 
   template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<T> &shouldbe) { return kernel_outcome == shouldbe; };
   template <class T> bool check_result(const result<T> &kernel_outcome, const result<T> &shouldbe) { return kernel_outcome == shouldbe; };
-  template <class T> bool check_result(const option<T> &kernel_outcome, const option<T> &shouldbe) { return kernel_outcome == shouldbe; };
 
   // If should be has type void, we only care kernel_outcome has a value
   template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<void> &shouldbe)
   {
-    if (kernel_outcome.has_value() && shouldbe.has_value())
+    if(kernel_outcome.has_value() && shouldbe.has_value())
       return kernel_outcome.has_value() == shouldbe.has_value();
-    else if (shouldbe.has_error() && kernel_outcome.has_error())
+    else if(shouldbe.has_error() && kernel_outcome.has_error())
       return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
       return kernel_outcome == shouldbe;
@@ -124,15 +123,8 @@ namespace detail
   {
     if(kernel_outcome.has_value() && shouldbe.has_value())
       return kernel_outcome.has_value() == shouldbe.has_value();
-    else if (shouldbe.has_error() && kernel_outcome.has_error())
+    else if(shouldbe.has_error() && kernel_outcome.has_error())
       return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
-    else
-      return kernel_outcome == shouldbe;
-  };
-  template <class T> bool check_result(const option<T> &kernel_outcome, const option<void> &shouldbe)
-  {
-    if(kernel_outcome.has_value() && shouldbe.has_value())
-      return kernel_outcome.has_value() == shouldbe.has_value();
     else
       return kernel_outcome == shouldbe;
   };
@@ -168,7 +160,7 @@ public:
   static constexpr const outcome_type &outcome_value(const parameter_sequence_value_type &v) { return std::get<0>(v); }
 
   //! The number of parameters in an individual parameter set
-  static constexpr size_t parameters_size = BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<parameter_sequence_value_type>::value - 1;
+  static constexpr size_t parameters_size = KERNELTEST_V1_NAMESPACE::parameters_size<parameter_sequence_value_type>::value - 1;
   //! The type of the parameter at index N
   template <size_t N> using parameter_type = typename parameters_element<1 + N, parameter_sequence_value_type>::type;
   //! Accessor for the parameter at index N
@@ -236,7 +228,7 @@ public:
           (void) hooks;
           stage = 1;
           // Call the kernel
-          results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<BOOST_KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
+          results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
           stage = 2;
         }
         catch(...)
@@ -310,7 +302,7 @@ public:
   \param fail Some callable with callspec bool(size_t, value, shouldbe) called if the values do not match
   \param pass Some callable with callspec bool(size_t, value, shouldbe) called if the values match
   */
-  template <class U, class V, class W, typename std::enable_if<boost_lite::type_traits::is_sequence<U>::value, bool>::type = true> bool check(U &&sequence, V &&fail, W &&pass) const
+  template <class U, class V, class W, typename std::enable_if<QUICKCPPLIB_NAMESPACE::type_traits::is_sequence<U>::value, bool>::type = true> bool check(U &&sequence, V &&fail, W &&pass) const
   {
     if(sequence.size() != _params.size())
       throw std::invalid_argument("sequence to check does not have same length as parameter permute sequence");
@@ -402,8 +394,8 @@ namespace detail
     template <bool first, class T, class... Types> static void _do(T &&v, Types &&... vs)
     {
       if(!first)
-        BOOST_KERNELTEST_COUT(", ");
-      BOOST_KERNELTEST_COUT(v);
+        KERNELTEST_COUT(", ");
+      KERNELTEST_COUT(v);
       _do<false>(std::forward<Types>(vs)...);
     };
 
@@ -417,17 +409,17 @@ namespace detail
     template <size_t Idx, class T, class... Types> void _do(T &&v, Types &&... vs) const
     {
       if(Idx > 0)
-        BOOST_KERNELTEST_COUT(", ");
+        KERNELTEST_COUT(", ");
       // Fetch the hook parameter set for this hook
       using hook_pars_type = typename Permuter::template parameter_type<1 + Idx>;
-//#ifdef __c2__  // c2 be buggy
-//      const auto &hook_pars = std::get<2 + Idx>(_v);
-//#else
+      //#ifdef __c2__  // c2 be buggy
+      //      const auto &hook_pars = std::get<2 + Idx>(_v);
+      //#else
       const auto &hook_pars = Permuter::template parameter_value<1 + Idx>(_v);
-//#endif
+      //#endif
       // Each hook instantiator exposes a member function print(...) which takes
       // the same args as the hook instance
-      detail::call_f_with_parameters([&v](const auto &... vs) { BOOST_KERNELTEST_COUT(v.print(vs...)); }, hook_pars, std::make_index_sequence<parameters_size<hook_pars_type>::value>());
+      detail::call_f_with_parameters([&v](const auto &... vs) { KERNELTEST_COUT(v.print(vs...)); }, hook_pars, std::make_index_sequence<parameters_size<hook_pars_type>::value>());
       _do<Idx + 1>(std::forward<Types>(vs)...);
     };
 
@@ -440,26 +432,26 @@ namespace detail
   };
   template <class Permuter> void pretty_print_preamble(const Permuter &_permuter, size_t idx)
   {
-    using namespace boost_lite::console_colours;
-    BOOST_KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _permuter.parameter_sequence().size() << ": " << normal);
+    using namespace QUICKCPPLIB_NAMESPACE::console_colours;
+    KERNELTEST_COUT("  " << yellow << (idx + 1) << "/" << _permuter.parameter_sequence().size() << ": " << normal);
     auto parameter_sequence_item_it = _permuter.parameter_sequence().cbegin();
     std::advance(parameter_sequence_item_it, idx);
     // Print kernel parameters we called the kernel with
     {
-      BOOST_KERNELTEST_COUT("kernel(");
+      KERNELTEST_COUT("kernel(");
       const auto &pars = std::get<1>(*parameter_sequence_item_it);
       using pars_type = typename std::decay<decltype(pars)>::type;
       detail::call_f_with_parameters(_print_params(), pars, std::make_index_sequence<parameters_size<pars_type>::value>());
-      BOOST_KERNELTEST_COUT(")");
+      KERNELTEST_COUT(")");
     }
     // If there are any hooks, print those
     if(Permuter::hook_sequence_size > 0)
     {
-      BOOST_KERNELTEST_COUT(" with ");
+      KERNELTEST_COUT(" with ");
       const auto &hooks = _permuter.hooks();
       detail::call_f_with_tuple(_print_hook<Permuter>(*parameter_sequence_item_it), hooks, std::make_index_sequence<Permuter::hook_sequence_size>());
     }
-    BOOST_KERNELTEST_COUT("\n");
+    KERNELTEST_COUT("\n");
   }
 
   template <class Permuter, class U> class pretty_print_failure_impl
@@ -476,9 +468,9 @@ namespace detail
     }
     template <class _T, class _U> bool operator()(size_t idx, const _T &result, const _U &shouldbe) const
     {
-      using namespace boost_lite::console_colours;
+      using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      BOOST_KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
+      KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
     }
@@ -497,9 +489,9 @@ namespace detail
     }
     template <class _T, class _U> bool operator()(size_t idx, const _T &result, const _U &shouldbe) const
     {
-      using namespace boost_lite::console_colours;
+      using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      BOOST_KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << result << std::endl);
+      KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << result << std::endl);
       _f(result, shouldbe);
       return true;
     }
@@ -535,11 +527,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 {
   // Note that we accumulate failures into the checks vector for later processing
   std::vector<std::function<void()>> checks;
-  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) {
-    checks.push_back([&] {
-      BOOST_CHECK(result == shouldbe);
-    });
-  }), pretty_print_success(permuter));
+  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result == shouldbe); }); }), pretty_print_success(permuter));
   BOOST_CHECK(all_passed);
   // The pretty printing gets messed up by the unit test output, so defer telling it
   // about failures until now
@@ -549,7 +537,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 
 /*! If expr is false, sets testreturn to an error_code_extended of `kerneltest_errc::check_failed` with an extended message of the expr which failed
 */
-#define BOOST_KERNELTEST_CHECK(testreturn, expr)                                                                                                                                                                                                                                                                               \
+#define KERNELTEST_CHECK(testreturn, expr)                                                                                                                                                                                                                                                                                     \
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
     \
@@ -559,7 +547,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 }
 
 
-BOOST_KERNELTEST_V1_NAMESPACE_END
+KERNELTEST_V1_NAMESPACE_END
 
 #ifdef _MSC_VER
 #pragma warning(pop)

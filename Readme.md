@@ -101,14 +101,14 @@ pasted in front:
 /* A small standalone program to test whether the permuter works
 */
 
-#include "../outcome/include/boost/outcome.hpp"
+#include "../outcome/include/outcome.hpp"
 
-#include "../boost-lite/include/bitfield.hpp"
+#include "../quickcpplib/include/bitfield.hpp"
 #include <filesystem>
 
 namespace minimal_afio
 {
-  using namespace BOOST_OUTCOME_V1_NAMESPACE;
+  using namespace OUTCOME_V2_NAMESPACE;
   struct native_handle_type
   {
     HANDLE h;
@@ -149,7 +149,7 @@ namespace minimal_afio
       temporary = 6            //!< Cache reads and writes of data and metadata so they complete immediately, only sending any updates to storage on last handle close in the system or if memory becomes tight as this file is expected to be temporary (Windows only).
                                // NOTE: IF UPDATING THIS UPDATE THE std::ostream PRINTER BELOW!!!
     };
-    BOOSTLITE_BITFIELD_BEGIN(flag)
+    QUICKCPPLIB_BITFIELD_BEGIN(flag)
     {
       none = 0,  //!< No flags
       unlink_on_close = 1 << 0, disable_safety_fsyncs = 1 << 2, disable_safety_unlinks = 1 << 3,
@@ -159,7 +159,7 @@ namespace minimal_afio
       overlapped = 1 << 28,         //!< On Windows, create any new handles with OVERLAPPED semantics
       byte_lock_insanity = 1 << 29  //!< Using insane POSIX byte range locks
     }
-    BOOSTLITE_BITFIELD_END(flag)
+    QUICKCPPLIB_BITFIELD_END(flag)
     file_handle(path_type path, caching, flag)
         : _path(std::move(path))
 
@@ -233,7 +233,7 @@ namespace minimal_afio
 namespace file_create
 {
   using namespace minimal_afio;
-  using boost_lite::ringbuffer_log::last190;
+  using QUICKCPPLIB_NAMESPACE::ringbuffer_log::last190;
   extern BOOST_SYMBOL_EXPORT result<file_handle> test_file_create(file_handle::path_type _path, file_handle::mode _mode = file_handle::mode::read, file_handle::creation _creation = file_handle::creation::open_existing, file_handle::caching _caching = file_handle::caching::all,
                                                                   file_handle::flag flags = file_handle::flag::none) noexcept
   {

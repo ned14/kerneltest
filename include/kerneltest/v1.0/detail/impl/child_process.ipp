@@ -36,7 +36,7 @@ Distributed under the Boost Software License, Version 1.0.
 #pragma warning(disable : 4996)  // use of posix apis
 #endif
 
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace child_process
 {
@@ -261,7 +261,7 @@ namespace child_process
   }
 }
 
-BOOST_KERNELTEST_V1_NAMESPACE_END
+KERNELTEST_V1_NAMESPACE_END
 
 #ifdef _WIN32
 #include "windows/child_process.ipp"

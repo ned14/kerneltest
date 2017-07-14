@@ -24,41 +24,42 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "../config.hpp"
 
-#ifndef BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
-#define BOOST_KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
+#ifndef KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
+#define KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 
-#include "../boost-lite/include/algorithm/string.hpp"
-#include "../boost-lite/include/utils/thread.hpp"
+#include "../quickcpplib/include/algorithm/string.hpp"
+#include "../quickcpplib/include/utils/thread.hpp"
 
 #include <fstream>
+#include <mutex>
 #include <unordered_map>
 
-BOOST_KERNELTEST_V1_NAMESPACE_BEGIN
+KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace hooks
 {
   namespace filesystem_setup_impl
   {
     //! Record the current working directory and store it
-    static inline const stl1z::filesystem::path &starting_path()
+    static inline const filesystem::path &starting_path()
     {
-      static stl1z::filesystem::path p = stl1z::filesystem::current_path();
+      static filesystem::path p = filesystem::current_path();
       return p;
     }
-    static inline stl1z::filesystem::path _has_product(stl1z::filesystem::path dir, const std::string &product)
+    static inline filesystem::path _has_product(filesystem::path dir, const std::string &product)
     {
-      if(stl1z::filesystem::exists(dir / product))
+      if(filesystem::exists(dir / product))
         return dir / product;
-      if(stl1z::filesystem::exists(dir / ("boost." + product)))
+      if(filesystem::exists(dir / ("boost." + product)))
         return dir / ("boost." + product);
-      return stl1z::filesystem::path();
+      return filesystem::path();
     }
 
     struct library_directory_storage
     {
       std::unique_lock<std::mutex> lock;
-      stl1z::filesystem::path &path;
-      library_directory_storage(std::unique_lock<std::mutex> &&_lock, stl1z::filesystem::path &_path)
+      filesystem::path &path;
+      library_directory_storage(std::unique_lock<std::mutex> &&_lock, filesystem::path &_path)
           : lock(std::move(_lock))
           , path(_path)
       {
@@ -72,22 +73,22 @@ namespace hooks
     inline library_directory_storage override_library_directory()
     {
       static std::mutex lock;
-      static stl1z::filesystem::path ret;
+      static filesystem::path ret;
       return library_directory_storage(std::unique_lock<std::mutex>(lock), ret);
     }
     /*! Figure out an absolute path to the base of the product's directory
     and cache it for later fast returns. Changing the product from the
     cached value will recalculate the path.
 
-    The environment variable BOOST_KERNELTEST_product_HOME is first checked,
+    The environment variable KERNELTEST_product_HOME is first checked,
     only if it doesn't exist the working directory is checked for a directory
     called product and every directory up the hierarchy until the root of the
     drive.
     \tparam is_throwing If true, throw exceptions for any errors encountered,
-    else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+    else print a useful message to KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline stl1z::filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
+    template <bool is_throwing = false> inline filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
     {
       try
       {
@@ -95,11 +96,11 @@ namespace hooks
         auto ret = override_library_directory();
         if(__product == product)
           return ret.path;
-        stl1z::filesystem::path library_dir = starting_path();
+        filesystem::path library_dir = starting_path();
 
-        // Is there an environment variable BOOST_KERNELTEST_product_HOME?
+        // Is there an environment variable KERNELTEST_product_HOME?
         std::string _product(__product);
-        std::string envkey("BOOST_KERNELTEST_" + boost_lite::algorithm::string::toupper(_product) + "_HOME");
+        std::string envkey("KERNELTEST_" + QUICKCPPLIB_NAMESPACE::algorithm::string::toupper(_product) + "_HOME");
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4996)  // Stupid deprecation warning
@@ -125,18 +126,18 @@ namespace hooks
         // If no environment variable, start searching from the current working directory
         // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
         // We must also account for an out-of-tree build
-        stl1z::filesystem::path temp;
+        filesystem::path temp;
         for(;;)
         {
           temp = _has_product(library_dir, _product);
-          if(!temp.empty() && stl1z::filesystem::exists(temp / "test" / "tests"))
+          if(!temp.empty() && filesystem::exists(temp / "test" / "tests"))
           {
             ret.path = temp;
             product = _product;
             return ret.path;
           }
           if(library_dir.native().size() > 3)
-            library_dir = stl1z::filesystem::canonical(library_dir / "..");
+            library_dir = filesystem::canonical(library_dir / "..");
           else
             break;
         }
@@ -144,7 +145,7 @@ namespace hooks
           throw std::runtime_error("Couldn't figure out where the product lives");
         else
         {
-          BOOST_KERNELTEST_CERR("FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl);
+          KERNELTEST_CERR("FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl);
           std::terminate();
         }
       }
@@ -152,7 +153,7 @@ namespace hooks
       {
         if(!is_throwing)
         {
-          BOOST_KERNELTEST_CERR("library_directory() unexpectedly failed" << std::endl);
+          KERNELTEST_CERR("library_directory() unexpectedly failed" << std::endl);
           std::terminate();
         }
         else
@@ -165,21 +166,21 @@ namespace hooks
     templates live in product/test/tests.
 
     \tparam is_throwing If true, throw exceptions for any errors encountered,
-    else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+    else print a useful message to KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline stl1z::filesystem::path workspace_template_path(const stl1z::filesystem::path &workspace)  // noexcept(!is_throwing)
+    template <bool is_throwing = false> inline filesystem::path workspace_template_path(const filesystem::path &workspace)  // noexcept(!is_throwing)
     {
       try
       {
-        stl1z::filesystem::path library_dir = library_directory();
-        if(stl1z::filesystem::exists(library_dir / "test" / "tests" / workspace))
+        filesystem::path library_dir = library_directory();
+        if(filesystem::exists(library_dir / "test" / "tests" / workspace))
         {
           return library_dir / "test" / "tests" / workspace;
         }
         // The final directory is allowed to not exist
         auto workspace2 = workspace.parent_path();
-        if(stl1z::filesystem::exists(library_dir / "test" / "tests" / workspace2))
+        if(filesystem::exists(library_dir / "test" / "tests" / workspace2))
         {
           return library_dir / "test" / "tests" / workspace;
         }
@@ -187,7 +188,7 @@ namespace hooks
           throw std::runtime_error("Couldn't figure out where the test workspace templates live");
         else
         {
-          BOOST_KERNELTEST_CERR("FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl);
+          KERNELTEST_CERR("FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl);
           std::terminate();
         }
       }
@@ -195,7 +196,7 @@ namespace hooks
       {
         if(!is_throwing)
         {
-          BOOST_KERNELTEST_CERR("workspace_template_path() unexpectedly failed" << std::endl);
+          KERNELTEST_CERR("workspace_template_path() unexpectedly failed" << std::endl);
           std::terminate();
         }
         else
@@ -205,31 +206,31 @@ namespace hooks
 
     template <bool is_throwing, class Parent, class RetType> struct impl
     {
-      stl1z::filesystem::path _current;
+      filesystem::path _current;
 
       void _remove_workspace()  // noexcept(!is_throwing)
       {
         stl1z::fs_error_code ec;
-        auto begin = stl11::chrono::steady_clock::now();
+        auto begin = std::chrono::steady_clock::now();
         do
         {
           ec.clear();
-          bool exists = stl1z::filesystem::exists(_current, ec);
-          if(!exists && (!ec || ec == stl11::errc::no_such_file_or_directory))
+          bool exists = filesystem::exists(_current, ec);
+          if(!exists && (!ec || ec == std::errc::no_such_file_or_directory))
             return;
-          stl1z::filesystem::remove_all(_current, ec);
-        } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
+          filesystem::remove_all(_current, ec);
+        } while(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count() < 5);
         if(is_throwing)
           throw std::runtime_error("Couldn't delete workspace after five seconds of trying");
-        BOOST_KERNELTEST_CERR("FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
+        KERNELTEST_CERR("FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
         std::terminate();
       }
 
-      impl(Parent *, RetType &, size_t, stl1z::filesystem::path &&workspace)  // noexcept(!is_throwing)
+      impl(Parent *, RetType &, size_t, filesystem::path &&workspace)  // noexcept(!is_throwing)
       {
         auto template_path = workspace_template_path<is_throwing>(workspace);
         // Make the workspace we choose unique to this thread
-        _current = starting_path() / ("kerneltest_workspace_" + std::to_string(boost_lite::utils::thread::this_thread_id()));
+        _current = starting_path() / ("kerneltest_workspace_" + std::to_string(QUICKCPPLIB_NAMESPACE::utils::thread::this_thread_id()));
         // Clear out any stale workspace with the same name at this path just in case
         _remove_workspace();
 
@@ -237,33 +238,33 @@ namespace hooks
         auto fatalexit = [&] {
           if(is_throwing)
             throw stl1z::fs_system_error(ec);
-          BOOST_KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
+          KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
           std::terminate();
         };
         // Is the input workspace no workspace? In which case create an empty directory
-        bool exists = stl1z::filesystem::exists(template_path, ec);
-        if(ec && ec != stl11::errc::no_such_file_or_directory)
+        bool exists = filesystem::exists(template_path, ec);
+        if(ec && ec != std::errc::no_such_file_or_directory)
           fatalexit();
         if(!exists)
         {
-          stl1z::filesystem::create_directory(_current, ec);
+          filesystem::create_directory(_current, ec);
           if(ec)
             fatalexit();
         }
         else
         {
-          auto begin = stl11::chrono::steady_clock::now();
+          auto begin = std::chrono::steady_clock::now();
           do
           {
-            stl1z::filesystem::copy(template_path, _current, stl1z::filesystem::copy_options::recursive, ec);
+            filesystem::copy(template_path, _current, filesystem::copy_options::recursive, ec);
             if(!ec)
               break;
-          } while(stl11::chrono::duration_cast<stl11::chrono::seconds>(stl11::chrono::steady_clock::now() - begin).count() < 5);
+          } while(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count() < 5);
           if(ec)
             fatalexit();
         }
         // Set the working directory to the newly configured workspace
-        stl1z::filesystem::current_path(_current);
+        filesystem::current_path(_current);
         current_test_kernel.working_directory = _current.c_str();
       }
       constexpr impl(impl &&) noexcept = default;
@@ -273,7 +274,7 @@ namespace hooks
         if(!_current.empty())
         {
           current_test_kernel.working_directory = nullptr;
-          stl1z::filesystem::current_path(starting_path());
+          filesystem::current_path(starting_path());
           _remove_workspace();
         }
       }
@@ -281,7 +282,7 @@ namespace hooks
     template <bool is_throwing> struct inst
     {
       const char *workspacebase;
-      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<is_throwing, Parent, RetType>(parent, testret, idx, stl1z::filesystem::path(workspacebase) / workspace); }
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<is_throwing, Parent, RetType>(parent, testret, idx, filesystem::path(workspacebase) / workspace); }
       std::string print(const char *workspace) const { return std::string("precondition ") + workspace; }
     };
   }
@@ -294,7 +295,7 @@ namespace hooks
   The source of the workspace templates comes from `workspace_template_path()` which in turn derives from
   `library_directory()`.
   \tparam is_throwing If true, throw exceptions for any errors encountered,
-  else print a useful message to BOOST_KERNELTEST_CERR() and terminate the
+  else print a useful message to KERNELTEST_CERR() and terminate the
   process.
   \return A type which when called configures the workspace and changes the working directory to that
   workspace, and on destruction deletes the workspace and changes the working directory back to `starting_path()`.
@@ -306,22 +307,22 @@ namespace hooks
   namespace filesystem_comparison_impl
   {
     //! Walk a directory hierarchy, depth first. f(directory_entry) can return something to early exit.
-    template <class U> inline auto depth_first_walk(stl1z::filesystem::path path, U &&f) -> decltype(f(std::declval<stl1z::filesystem::directory_entry>()))
+    template <class U> inline auto depth_first_walk(filesystem::path path, U &&f) -> decltype(f(std::declval<filesystem::directory_entry>()))
     {
-      if(stl1z::filesystem::exists(path))
+      if(filesystem::exists(path))
       {
-        for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
+        for(filesystem::directory_iterator it(path); it != filesystem::directory_iterator(); ++it)
         {
-          if(stl1z::filesystem::is_directory(it->status()))
+          if(filesystem::is_directory(it->status()))
           {
             auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
             if(ret)
               return ret;
           }
         }
-        for(stl1z::filesystem::directory_iterator it(path); it != stl1z::filesystem::directory_iterator(); ++it)
+        for(filesystem::directory_iterator it(path); it != filesystem::directory_iterator(); ++it)
         {
-          if(!stl1z::filesystem::is_directory(it->status()))
+          if(!filesystem::is_directory(it->status()))
           {
             auto ret(f(*it));
             if(ret)
@@ -330,48 +331,48 @@ namespace hooks
         }
       }
       // Return default constructed edition of the type returned by the callable
-      return decltype(f(std::declval<stl1z::filesystem::directory_entry>()))();
+      return decltype(f(std::declval<filesystem::directory_entry>()))();
     }
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
-    template <bool compare_contents, bool compare_timestamps> result<stl1z::filesystem::path> compare_directories(stl1z::filesystem::path before, stl1z::filesystem::path after) noexcept
+    template <bool compare_contents, bool compare_timestamps> result<filesystem::path> compare_directories(filesystem::path before, filesystem::path after) noexcept
     {
       try
       {
         // Make list of everything in after
-        std::unordered_map<stl1z::filesystem::path, stl1z::filesystem::directory_entry, path_hasher> after_items;
-        depth_first_walk(after, [&](stl1z::filesystem::directory_entry dirent) -> int {
+        std::unordered_map<filesystem::path, filesystem::directory_entry, path_hasher> after_items;
+        depth_first_walk(after, [&](filesystem::directory_entry dirent) -> int {
           after_items[dirent.path()] = std::move(dirent);
           return 0;
         });
 
         // We need to remove each item as we check, if anything remains we fail
-        result<stl1z::filesystem::path> ret = depth_first_walk(before, [&](stl1z::filesystem::directory_entry dirent) -> result<stl1z::filesystem::path> {
+        result<filesystem::path> ret = depth_first_walk(before, [&](filesystem::directory_entry dirent) -> result<filesystem::path> {
           try
           {
-            stl1z::filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
-            stl1z::filesystem::path afterpath(after / leafpath);
-            if(stl1z::filesystem::is_symlink(dirent.symlink_status()))
+            filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
+            filesystem::path afterpath(after / leafpath);
+            if(filesystem::is_symlink(dirent.symlink_status()))
             {
-              if(stl1z::filesystem::is_symlink(dirent.symlink_status()) != stl1z::filesystem::is_symlink(stl1z::filesystem::symlink_status(afterpath)))
+              if(filesystem::is_symlink(dirent.symlink_status()) != filesystem::is_symlink(filesystem::symlink_status(afterpath)))
                 goto differs;
-              if(stl1z::filesystem::read_symlink(dirent.path()) != stl1z::filesystem::read_symlink(afterpath))
+              if(filesystem::read_symlink(dirent.path()) != filesystem::read_symlink(afterpath))
                 goto differs;
             }
             {
               auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
-              if(stl1z::filesystem::is_directory(beforestatus) != stl1z::filesystem::is_directory(afterstatus))
+              if(filesystem::is_directory(beforestatus) != filesystem::is_directory(afterstatus))
                 goto differs;
-              if(stl1z::filesystem::is_regular_file(beforestatus) != stl1z::filesystem::is_regular_file(afterstatus))
+              if(filesystem::is_regular_file(beforestatus) != filesystem::is_regular_file(afterstatus))
                 goto differs;
-              if(stl1z::filesystem::file_size(dirent.path()) != stl1z::filesystem::file_size(afterpath))
+              if(filesystem::file_size(dirent.path()) != filesystem::file_size(afterpath))
                 goto differs;
               if(compare_timestamps)
               {
                 if(beforestatus.permissions() != afterstatus.permissions())
                   goto differs;
-                if(stl1z::filesystem::last_write_time(dirent.path()) != stl1z::filesystem::last_write_time(afterpath))
+                if(filesystem::last_write_time(dirent.path()) != filesystem::last_write_time(afterpath))
                   goto differs;
               }
             }
@@ -389,7 +390,7 @@ namespace hooks
             }
             // This item is identical
             after_items.erase(afterpath);
-            return make_empty_result<stl1z::filesystem::path>();
+            return make_empty_result<filesystem::path>();
           differs:
             return leafpath;
           }
@@ -402,7 +403,7 @@ namespace hooks
         if(!after_items.empty())
           return after_items.begin()->first;
         // Otherwise both current and after are identical
-        return make_empty_result<stl1z::filesystem::path>();
+        return make_empty_result<filesystem::path>();
       }
       BOOST_OUTCOME_CATCH_ALL_EXCEPTION_TO_RESULT
     }
@@ -412,12 +413,12 @@ namespace hooks
       Parent *parent;
       RetType &testret;
       size_t idx;
-      stl1z::filesystem::path model_workspace;
+      filesystem::path model_workspace;
       structure_impl(Parent *_parent, RetType &_testret, size_t _idx, const char *workspacebase, const char *workspace)
           : parent(_parent)
           , testret(_testret)
           , idx(_idx)
-          , model_workspace(filesystem_setup_impl::workspace_template_path(stl1z::filesystem::path(workspacebase) / workspace))
+          , model_workspace(filesystem_setup_impl::workspace_template_path(filesystem::path(workspacebase) / workspace))
       {
       }
       structure_impl(structure_impl &&) noexcept = default;
@@ -428,14 +429,14 @@ namespace hooks
         {
           if(!current_test_kernel.working_directory)
           {
-            BOOST_KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
+            KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
             std::terminate();
           }
           // Only do comparison if test passed
           if(testret)
           {
             // If this is empty, workspaces are identical
-            result<stl1z::filesystem::path> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
+            result<filesystem::path> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
             // Propagate any error
             if(workspaces_not_identical.has_error())
               testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.get_error().message().c_str(), workspaces_not_identical.get_error().value());
@@ -475,6 +476,6 @@ namespace precondition = hooks;
 //! Alias hooks to postcondition
 namespace postcondition = hooks;
 
-BOOST_KERNELTEST_V1_NAMESPACE_END
+KERNELTEST_V1_NAMESPACE_END
 
 #endif

@@ -62,7 +62,7 @@ int main() {
 set(CMAKE_CXX_STANDARD ${OLD_CMAKE_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ${OLD_CMAKE_CXX_STANDARD_REQUIRED})
 if(CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
-  all_compile_definitions(PUBLIC BOOST_KERNELTEST_HAVE_AGGREGATE_TUPLE=1)
+  all_compile_definitions(PUBLIC KERNELTEST_HAVE_AGGREGATE_TUPLE=1)
 endif()
 # Set the library dependencies this library has
 target_link_libraries(kerneltest_hl INTERFACE quickcpplib::hl outcome::hl)
