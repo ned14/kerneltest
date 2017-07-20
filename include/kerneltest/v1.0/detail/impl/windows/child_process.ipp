@@ -32,7 +32,7 @@ namespace child_process
 {
   child_process::~child_process()
   {
-    wait();
+    (void) wait();
     if(_stdin || _cin)
     {
       // Handles are already closed, no need to do so again

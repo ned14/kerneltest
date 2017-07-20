@@ -86,7 +86,7 @@ KERNELTEST_V1_NAMESPACE_END
 // Bring in filesystem
 #if defined(__has_include)
 // clang-format off
-#if __has_include(<filesystem>)
+#if __has_include(<filesystem>) && __cplusplus > 201700
 #include <filesystem>
 KERNELTEST_V1_NAMESPACE_BEGIN
 namespace filesystem = std::filesystem;
