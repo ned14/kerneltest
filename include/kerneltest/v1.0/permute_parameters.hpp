@@ -208,7 +208,7 @@ public:
   {
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
     using return_type_as_if_void = typename return_type::template rebind<void>;
-    static_assert(outcome_type::has_value_type ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
+    static_assert(!std::is_void<outcome_type>::value ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
     permutation_results_type<return_type> results(detail::make_permutation_results_type<permutation_results_type<return_type>>(_params.size()));
     permutation_results_type<const parameter_sequence_value_type *> params(detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
     {
@@ -239,7 +239,7 @@ public:
           else if(2 == stage)
             code = kerneltest_errc::teardown_exception_thrown;
 #if 1
-          results[idx].set_error(error_code_extended(make_error_code(code)));
+          results[idx] = make_error_code(code);
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
 #else
           try

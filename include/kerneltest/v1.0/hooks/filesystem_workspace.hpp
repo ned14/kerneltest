@@ -210,7 +210,7 @@ namespace hooks
 
       void _remove_workspace()  // noexcept(!is_throwing)
       {
-        stl1z::fs_error_code ec;
+        std::error_code ec;
         auto begin = std::chrono::steady_clock::now();
         do
         {
@@ -234,10 +234,10 @@ namespace hooks
         // Clear out any stale workspace with the same name at this path just in case
         _remove_workspace();
 
-        stl1z::fs_error_code ec;
+        std::error_code ec;
         auto fatalexit = [&] {
           if(is_throwing)
-            throw stl1z::fs_system_error(ec);
+            throw std::system_error(ec);
           KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
           std::terminate();
         };
@@ -439,10 +439,10 @@ namespace hooks
             result<filesystem::path> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
             // Propagate any error
             if(workspaces_not_identical.has_error())
-              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.get_error().message().c_str(), workspaces_not_identical.get_error().value());
+              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.error().message().c_str(), workspaces_not_identical.error().value());
             // Set error with extended message of the path which differs
             else if(workspaces_not_identical.has_value())
-              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.get().string().c_str());
+              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.value().string().c_str());
           }
         }
       }
