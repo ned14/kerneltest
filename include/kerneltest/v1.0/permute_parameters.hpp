@@ -54,12 +54,12 @@ namespace detail
   };
   template <class ParamSequence, bool = has_constant_size<ParamSequence>::value> struct permutation_results_type
   {
-    template <class T> using type = std::vector<T>;
+    template <class T> using type = std::vector<optional<T>>;
     constexpr ParamSequence operator()(size_t no) const { return ParamSequence(no); }
   };
   template <class ParamSequence> struct permutation_results_type<ParamSequence, true>
   {
-    template <class T> using type = std::array<T, has_constant_size<ParamSequence>::size>;
+    template <class T> using type = std::array<optional<T>, has_constant_size<ParamSequence>::size>;
     constexpr ParamSequence operator()(size_t) const { return ParamSequence(); }
   };
   template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
@@ -208,7 +208,7 @@ public:
   {
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
     using return_type_as_if_void = typename return_type::template rebind<void>;
-    static_assert(!std::is_void<outcome_type>::value ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
+    static_assert(!std::is_void<typename outcome_type::value_type>::value ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
     permutation_results_type<return_type> results(detail::make_permutation_results_type<permutation_results_type<return_type>>(_params.size()));
     permutation_results_type<const parameter_sequence_value_type *> params(detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
     {

@@ -24,6 +24,8 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "../../../child_process.hpp"
 
+#include <thread>
+
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>  // for siginfo_t
@@ -239,7 +241,7 @@ namespace child_process
     do
     {
       // If timeout is not set, this will block forever
-      BOOST_OUTCOME_TRY(running, check_child());
+      OUTCOME_TRY(running, check_child());
       if(!running)
         return ret;
       std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -83,6 +83,11 @@ Distributed under the Boost Software License, Version 1.0.
 KERNELTEST_V1_NAMESPACE_BEGIN
 using QUICKCPPLIB_NAMESPACE::scoped_undo::undoer;
 KERNELTEST_V1_NAMESPACE_END
+// Bring in an optional implementation
+#include "../quickcpplib/include/optional.hpp"
+KERNELTEST_V1_NAMESPACE_BEGIN
+using namespace QUICKCPPLIB_NAMESPACE::optional;
+KERNELTEST_V1_NAMESPACE_END
 // Bring in filesystem
 #if defined(__has_include)
 // clang-format off

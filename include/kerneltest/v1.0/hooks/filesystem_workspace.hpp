@@ -336,7 +336,7 @@ namespace hooks
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
-    template <bool compare_contents, bool compare_timestamps> result<filesystem::path> compare_directories(filesystem::path before, filesystem::path after) noexcept
+    template <bool compare_contents, bool compare_timestamps> optional<result<filesystem::path>> compare_directories(filesystem::path before, filesystem::path after) noexcept
     {
       try
       {
@@ -348,7 +348,7 @@ namespace hooks
         });
 
         // We need to remove each item as we check, if anything remains we fail
-        result<filesystem::path> ret = depth_first_walk(before, [&](filesystem::directory_entry dirent) -> result<filesystem::path> {
+        optional<result<filesystem::path>> ret = depth_first_walk(before, [&](filesystem::directory_entry dirent) -> optional<result<filesystem::path>> {
           try
           {
             filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
@@ -390,22 +390,28 @@ namespace hooks
             }
             // This item is identical
             after_items.erase(afterpath);
-            return make_empty_result<filesystem::path>();
+            return {};
           differs:
-            return leafpath;
+            return {success(leafpath)};
           }
-          BOOST_OUTCOME_CATCH_ALL_EXCEPTION_TO_RESULT
+          catch(...)
+          {
+            return {error_from_exception()};
+          }
         });
         // If anything different, return that
         if(ret)
           return ret;
         // If anything in after not in current, return that
         if(!after_items.empty())
-          return after_items.begin()->first;
+          return {success(after_items.begin()->first)};
         // Otherwise both current and after are identical
-        return make_empty_result<filesystem::path>();
+        return {};
       }
-      BOOST_OUTCOME_CATCH_ALL_EXCEPTION_TO_RESULT
+      catch(...)
+      {
+        return {error_from_exception()};
+      }
     }
 
     template <class Parent, class RetType> struct structure_impl
@@ -436,13 +442,16 @@ namespace hooks
           if(testret)
           {
             // If this is empty, workspaces are identical
-            result<filesystem::path> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
-            // Propagate any error
-            if(workspaces_not_identical.has_error())
-              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical.error().message().c_str(), workspaces_not_identical.error().value());
-            // Set error with extended message of the path which differs
-            else if(workspaces_not_identical.has_value())
-              testret = error_code_extended(make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical.value().string().c_str());
+            optional<result<filesystem::path>> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
+            if(workspaces_not_identical)
+            {
+              // Propagate any error
+              if(workspaces_not_identical->has_error())
+                testret = {make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()};
+              // Set error with extended message of the path which differs
+              else if(workspaces_not_identical->has_value())
+                testret = {make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical->value().string().c_str()};
+            }
           }
         }
       }
