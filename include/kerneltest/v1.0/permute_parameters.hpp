@@ -112,10 +112,10 @@ namespace detail
   // If should be has type void, we only care kernel_outcome has a value
   template <class T, class U, class V, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<void, B, C> &shouldbe)
   {
-    if(kernel_outcome.value() has_value() && shouldbe.has_value())
-      return kernel_outcome.value() has_value() == shouldbe.has_value();
-    else if(shouldbe.has_error() && kernel_outcome.value() has_error())
-      return kernel_outcome.value() error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
+    if(kernel_outcome.value().has_value() && shouldbe.has_value())
+      return kernel_outcome.value().has_value() == shouldbe.has_value();
+    else if(shouldbe.has_error() && kernel_outcome.value().has_error())
+      return kernel_outcome.value().error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
       return kernel_outcome.value() == shouldbe;
   };
