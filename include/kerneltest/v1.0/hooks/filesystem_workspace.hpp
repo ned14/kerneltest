@@ -102,8 +102,13 @@ namespace hooks
         std::string _product(__product);
         std::string envkey("KERNELTEST_" + QUICKCPPLIB_NAMESPACE::algorithm::string::toupper(_product) + "_HOME");
 #ifdef _MSC_VER
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#else
 #pragma warning(push)
 #pragma warning(disable : 4996)  // Stupid deprecation warning
+#endif
 #endif
 #ifdef _UNICODE
         std::wstring _envkey;
@@ -114,7 +119,11 @@ namespace hooks
         auto env = getenv(envkey.c_str());
 #endif
 #ifdef _MSC_VER
+#ifdef __clang__
+#pragma clang diagnostic pop
+#else
 #pragma warning(pop)
+#endif
 #endif
         if(env)
         {
@@ -447,10 +456,10 @@ namespace hooks
             {
               // Propagate any error
               if(workspaces_not_identical->has_error())
-                testret = {make_error_code(kerneltest_errc::filesystem_comparison_internal_failure), workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()};
+                testret = {make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)};  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
               // Set error with extended message of the path which differs
               else if(workspaces_not_identical->has_value())
-                testret = {make_error_code(kerneltest_errc::filesystem_comparison_failed), workspaces_not_identical->value().string().c_str()};
+                testret = {make_error_code(kerneltest_errc::filesystem_comparison_failed)};  // , workspaces_not_identical->value().string().c_str()
             }
           }
         }

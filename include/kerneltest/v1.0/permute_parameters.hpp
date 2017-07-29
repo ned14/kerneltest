@@ -106,27 +106,27 @@ namespace detail
   template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
   template <class U, class... Types, size_t... Idxs> auto call_f_with_tuple(U &&f, const std::tuple<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
 
-  template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<T> &shouldbe) { return kernel_outcome == shouldbe; };
-  template <class T> bool check_result(const result<T> &kernel_outcome, const result<T> &shouldbe) { return kernel_outcome == shouldbe; };
+  template <class T, class U, class V, class A, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<A, B, C> &shouldbe) { return kernel_outcome.value() == shouldbe; };
+  template <class T, class U, class A, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<A, B> &shouldbe) { return kernel_outcome.value() == shouldbe; };
 
   // If should be has type void, we only care kernel_outcome has a value
-  template <class T> bool check_result(const outcome<T> &kernel_outcome, const outcome<void> &shouldbe)
+  template <class T, class U, class V, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<void, B, C> &shouldbe)
   {
-    if(kernel_outcome.has_value() && shouldbe.has_value())
-      return kernel_outcome.has_value() == shouldbe.has_value();
-    else if(shouldbe.has_error() && kernel_outcome.has_error())
-      return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
+    if(kernel_outcome.value() has_value() && shouldbe.has_value())
+      return kernel_outcome.value() has_value() == shouldbe.has_value();
+    else if(shouldbe.has_error() && kernel_outcome.value() has_error())
+      return kernel_outcome.value() error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
-      return kernel_outcome == shouldbe;
+      return kernel_outcome.value() == shouldbe;
   };
-  template <class T> bool check_result(const result<T> &kernel_outcome, const result<void> &shouldbe)
+  template <class T, class U, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<void, B> &shouldbe)
   {
-    if(kernel_outcome.has_value() && shouldbe.has_value())
-      return kernel_outcome.has_value() == shouldbe.has_value();
-    else if(shouldbe.has_error() && kernel_outcome.has_error())
-      return kernel_outcome.error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
+    if(kernel_outcome.value().has_value() && shouldbe.has_value())
+      return kernel_outcome.value().has_value() == shouldbe.has_value();
+    else if(shouldbe.has_error() && kernel_outcome.value().has_error())
+      return kernel_outcome.value().error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
     else
-      return kernel_outcome == shouldbe;
+      return kernel_outcome.value() == shouldbe;
   };
 }
 
@@ -220,11 +220,11 @@ public:
       int stage = 0;
       auto nested_f = [&](size_t idx) {
         using callable_parameters_type = parameter_type<0>;
-        const callable_parameters_type &p = parameter_value<0>(*params[idx]);
+        const callable_parameters_type &p = parameter_value<0>(**params[idx]);
         try
         {
           // Instantiate the hooks
-          auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, *params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
+          auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, **params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
           (void) hooks;
           stage = 1;
           // Call the kernel
@@ -239,7 +239,7 @@ public:
           else if(2 == stage)
             code = kerneltest_errc::teardown_exception_thrown;
 #if 1
-          results[idx] = make_error_code(code);
+          results[idx] = {make_error_code(code)};
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
 #else
           try
@@ -272,7 +272,7 @@ public:
           code = kerneltest_errc::kernel_seh_exception_thrown;
         else if(2 == stage)
           code = kerneltest_errc::teardown_seh_exception_thrown;
-        results[idx].set_error(error_code_extended(make_error_code(code)));
+        results[idx] = {make_error_code(code)};
       }
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -470,7 +470,7 @@ namespace detail
     {
       using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << shouldbe << normal << ", was " << bold << result << normal << ")" << std::endl);
+      KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << print(shouldbe) << normal << ", was " << bold << print(result.value()) << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
     }
@@ -491,7 +491,7 @@ namespace detail
     {
       using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << result << std::endl);
+      KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << print(result.value()) << std::endl);
       _f(result, shouldbe);
       return true;
     }
@@ -527,7 +527,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 {
   // Note that we accumulate failures into the checks vector for later processing
   std::vector<std::function<void()>> checks;
-  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result == shouldbe); }); }), pretty_print_success(permuter));
+  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result.value() == shouldbe); }); }), pretty_print_success(permuter));
   BOOST_CHECK(all_passed);
   // The pretty printing gets messed up by the unit test output, so defer telling it
   // about failures until now
@@ -541,8 +541,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
     \
-(testreturn)                                                                                                                                                                                                                                                                                                                   \
-    .set_error(error_code_extended(make_error_code(kerneltest_errc::check_failed), #expr, 0, 0, true));                                                                                                                                                                                                                        \
+(testreturn) = {make_error_code(kerneltest_errc::check_failed)};                                                                                                                                                                                                                                                               \
   \
 }
 
