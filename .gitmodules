@@ -1,6 +1,6 @@
 [submodule "include/kerneltest/outcome"]
 	path = include/kerneltest/outcome
-	url = https://github.com/ned14/boost.outcome.git
+	url = https://github.com/ned14/outcome.git
 	branch = master
 	fetchRecurseSubmodules = true
 	ignore = untracked
