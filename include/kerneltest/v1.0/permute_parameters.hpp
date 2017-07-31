@@ -115,7 +115,18 @@ namespace detail
     if(kernel_outcome.value().has_value() && shouldbe.has_value())
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
-      return kernel_outcome.value().error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
+    {
+      // match errors for semantic equivalence
+      if(kernel_outcome.value().error().default_error_condition() == shouldbe.error())
+        return true;
+#ifndef _WIN32
+      // Some POSIX STLs don't map system_category to generic_category, which is stupid
+      std::error_code ec(kernel_outcome.value().error());
+      if(ec.category() == std::system_category() && shouldbe.error().category() == std::generic_category())
+        return ec.value() == shouldbe.error().value();
+#endif
+      return false;
+    }
     else
       return kernel_outcome.value() == shouldbe;
   };
@@ -124,7 +135,18 @@ namespace detail
     if(kernel_outcome.value().has_value() && shouldbe.has_value())
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
-      return kernel_outcome.value().error() == shouldbe.error().default_error_condition();  // match errors for semantic equivalence
+    {
+      // match errors for semantic equivalence
+      if(kernel_outcome.value().error().default_error_condition() == shouldbe.error())
+        return true;
+#ifndef _WIN32
+      // Some POSIX STLs don't map system_category to generic_category, which is stupid
+      std::error_code ec(kernel_outcome.value().error());
+      if(ec.category() == std::system_category() && shouldbe.error().category() == std::generic_category())
+        return ec.value() == shouldbe.error().value();
+#endif
+      return false;
+    }
     else
       return kernel_outcome.value() == shouldbe;
   };
