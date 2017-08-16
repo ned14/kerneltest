@@ -27,13 +27,42 @@ include(QuickCppLibMakeHeaderOnlyLibrary)
 include(QuickCppLibMakeDoxygen)
 # Set the standard definitions for these libraries and bring in the all_* helper functions
 include(QuickCppLibApplyDefaultDefinitions)
-# Set the C++ features this library requires
-all_compile_features(PUBLIC
-  cxx_std_17  ## needed for aggregate tuple
-)
-if(ENABLE_CXX_CONCEPTS)
-  all_compile_options(PUBLIC -fconcepts)
+# Check if our std::tuple can do aggregate initialisation
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("
+#include <tuple>
+int main() {
+  constexpr std::tuple<int, double, const char *> fc[] = {
+      {1, 1.0, \"hi1\"}, {2, 2.0, \"hi2\"}, {3, 3.0, \"hi3\"}};
+  static_assert(std::get<0>(fc[0]), \"die\");
+  return 0;
+}
+" CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+  # We need C++ 17 for aggregate tuple
+  foreach(feature ${CMAKE_CXX_COMPILE_FEATURES})
+    if(feature STREQUAL cxx_std_17)
+      target_compile_features(kerneltest_hl INTERFACE cxx_std_17)
+      if(ENABLE_CXX_CONCEPTS)
+        target_compile_options(kerneltest_hl INTERFACE -fconcepts)
+      endif()
+    endif()
+  endforeach()
+  check_cxx_source_compiles("
+  #include <tuple>
+  int main() {
+    constexpr std::tuple<int, double, const char *> fc[] = {
+        {1, 1.0, \"hi1\"}, {2, 2.0, \"hi2\"}, {3, 3.0, \"hi3\"}};
+    static_assert(std::get<0>(fc[0]), \"die\");
+    return 0;
+  }
+  " CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+  if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+    indented_message(FATAL_ERROR "This STL's std::tuple cannot do aggregate initialisation, "
+    "and enabling C++ 17 didn't help so bailing out, sorry")
+  endif()
 endif()
+
 # Set the library dependencies this library has
 target_link_libraries(kerneltest_hl INTERFACE quickcpplib::hl outcome::hl)
 
