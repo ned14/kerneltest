@@ -157,21 +157,12 @@ using namespace OUTCOME_V2_NAMESPACE;
 KERNELTEST_V1_NAMESPACE_END
 
 // We need an aggregate initialisable collection of heterogeneous types
-#if __cplusplus >= 20170000L || __GNUC__ >= 6 || KERNELTEST_HAVE_AGGREGATE_TUPLE
 #include <tuple>
 KERNELTEST_V1_NAMESPACE_BEGIN
 template <class... Types> using parameters = std::tuple<Types...>;
 template <class T> using parameters_size = std::tuple_size<T>;
 template <size_t N, class T> using parameters_element = std::tuple_element<N, T>;
 KERNELTEST_V1_NAMESPACE_END
-#else
-#include "../quickcpplib/include/atuple.hpp"
-KERNELTEST_V1_NAMESPACE_BEGIN
-template <class... Types> using parameters = QUICKCPPLIB_NAMESPACE::aggregate_tuple::tuple<Types...>;
-template <class T> using parameters_size = QUICKCPPLIB_NAMESPACE::aggregate_tuple::tuple_size<T>;
-template <size_t N, class T> using parameters_element = QUICKCPPLIB_NAMESPACE::aggregate_tuple::tuple_element<N, T>;
-KERNELTEST_V1_NAMESPACE_END
-#endif
 
 #if !defined(KERNELTEST_COUT) && !defined(KERNELTEST_CERR)
 #include <iostream>

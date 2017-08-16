@@ -388,7 +388,7 @@ namespace hooks
             if(compare_contents)
             {
               std::ifstream beforeh(dirent.path()), afterh(afterpath);
-              char beforeb[16384], afterb[16384];
+              char beforeb[16384] = "", afterb[16384] = "";
               do
               {
                 beforeh.read(beforeb, sizeof(beforeb));
