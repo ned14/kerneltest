@@ -44,7 +44,7 @@ unset(CMAKE_CXX_STANDARD)
 unset(CMAKE_CXX_STANDARD_REQUIRED)
 if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
   # Try again with C++ 17, but use the flag directly as older cmake doesn't implement cxx_std_17
-  set(CMAKE_REQUIRED_FLAGS "-std=c++17")
+  set(CMAKE_REQUIRED_FLAGS "-std=c++1z")
   check_cxx_source_compiles("
   #include <tuple>
   int main() {
@@ -59,7 +59,7 @@ if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
     indented_message(FATAL_ERROR "This STL's std::tuple cannot do aggregate initialisation, "
     "and enabling C++ 17 didn't help so bailing out, sorry")
   endif()
-  target_compile_options(kerneltest_hl INTERFACE "-std=c++17")
+  target_compile_options(kerneltest_hl INTERFACE "-std=c++1z")
 endif()
 # If Concepts are available, use them
 if(ENABLE_CXX_CONCEPTS)
