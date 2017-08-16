@@ -30,7 +30,7 @@ Distributed under the Boost Software License, Version 1.0.
 #define KERNELTEST_HEADERS_ONLY 1
 #endif
 
-#include "../quickcpplib/include/cpp_feature.h"
+#include "quickcpplib/include/cpp_feature.h"
 
 #ifndef __cpp_exceptions
 #error KernelTest needs C++ exceptions to be turned on
@@ -52,7 +52,7 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 #endif
 
-#include "../quickcpplib/include/import.h"
+#include "quickcpplib/include/import.h"
 
 #if defined(KERNELTEST_UNSTABLE_VERSION)
 #include "../revision.hpp"
@@ -77,14 +77,14 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 
 // Bring in the Boost-lite macros
-#include "../quickcpplib/include/config.hpp"
+#include "quickcpplib/include/config.hpp"
 // Bring in scoped undo
-#include "../quickcpplib/include/scoped_undo.hpp"
+#include "quickcpplib/include/scoped_undo.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 using QUICKCPPLIB_NAMESPACE::scoped_undo::undoer;
 KERNELTEST_V1_NAMESPACE_END
 // Bring in an optional implementation
-#include "../quickcpplib/include/optional.hpp"
+#include "quickcpplib/include/optional.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 using namespace QUICKCPPLIB_NAMESPACE::optional;
 KERNELTEST_V1_NAMESPACE_END
@@ -150,7 +150,7 @@ function exported from the KernelTest DLL if not building headers only.
 #endif
 
 
-#include "../outcome/include/outcome.hpp"
+#include "outcome/include/outcome.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 // We are so heavily tied into Outcome we just import it wholesale into our namespace
 using namespace OUTCOME_V2_NAMESPACE;

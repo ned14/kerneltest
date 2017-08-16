@@ -28,8 +28,8 @@ Distributed under the Boost Software License, Version 1.0.
 #define KERNELTEST_TEST_KERNEL_HPP
 
 //#define BOOST_CATCH_CUSTOM_MAIN_DEFINED
-#include "../quickcpplib/include/boost/test/unit_test.hpp"
-#include "../quickcpplib/include/console_colours.hpp"
+#include "quickcpplib/include/boost/test/unit_test.hpp"
+#include "quickcpplib/include/console_colours.hpp"
 
 #define KERNELTEST_TEST_UNIQUE_NAME2(a, b) a##b
 #define KERNELTEST_TEST_UNIQUE_NAME1(a, b) KERNELTEST_TEST_UNIQUE_NAME2(a, b)

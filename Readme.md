@@ -101,9 +101,9 @@ pasted in front:
 /* A small standalone program to test whether the permuter works
 */
 
-#include "../outcome/include/outcome.hpp"
+#include "outcome/include/outcome.hpp"
 
-#include "../quickcpplib/include/bitfield.hpp"
+#include "quickcpplib/include/bitfield.hpp"
 #include <filesystem>
 
 namespace minimal_afio
