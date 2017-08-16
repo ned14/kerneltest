@@ -1,12 +1,12 @@
-[submodule "include/kerneltest/outcome"]
-	path = include/kerneltest/outcome
+[submodule "include/kerneltest/v1.0/outcome"]
+	path = include/kerneltest/v1.0/outcome
 	url = https://github.com/ned14/outcome.git
 	branch = master
 	fetchRecurseSubmodules = true
 	ignore = untracked
 #	shallow = true
-[submodule "include/kerneltest/quickcpplib"]
-	path = include/kerneltest/quickcpplib
+[submodule "include/kerneltest/v1.0/quickcpplib"]
+	path = include/kerneltest/v1.0/quickcpplib
 	url = https://github.com/ned14/quickcpplib.git
 	branch = master
 	fetchRecurseSubmodules = true
