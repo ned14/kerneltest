@@ -27,8 +27,10 @@ include(QuickCppLibMakeHeaderOnlyLibrary)
 include(QuickCppLibMakeDoxygen)
 # Set the standard definitions for these libraries and bring in the all_* helper functions
 include(QuickCppLibApplyDefaultDefinitions)
-# Check if our std::tuple can do aggregate initialisation
+# Check if our std::tuple can do aggregate initialisation in C++ 14
 include(CheckCXXSourceCompiles)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
 check_cxx_source_compiles("
 #include <tuple>
 int main() {
@@ -38,16 +40,11 @@ int main() {
   return 0;
 }
 " CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+unset(CMAKE_CXX_STANDARD)
+unset(CMAKE_CXX_STANDARD_REQUIRED)
 if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
-  # We need C++ 17 for aggregate tuple
-  foreach(feature ${CMAKE_CXX_COMPILE_FEATURES})
-    if(feature STREQUAL cxx_std_17)
-      target_compile_features(kerneltest_hl INTERFACE cxx_std_17)
-      if(ENABLE_CXX_CONCEPTS)
-        target_compile_options(kerneltest_hl INTERFACE -fconcepts)
-      endif()
-    endif()
-  endforeach()
+  # Try again with C++ 17, but use the flag directly as older cmake doesn't implement cxx_std_17
+  set(CMAKE_REQUIRED_FLAGS "-std=c++17")
   check_cxx_source_compiles("
   #include <tuple>
   int main() {
@@ -56,11 +53,17 @@ if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
     static_assert(std::get<0>(fc[0]), \"die\");
     return 0;
   }
-  " CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
-  if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
+  " CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE2)
+  unset(CMAKE_REQUIRED_FLAGS)
+  if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE2)
     indented_message(FATAL_ERROR "This STL's std::tuple cannot do aggregate initialisation, "
     "and enabling C++ 17 didn't help so bailing out, sorry")
   endif()
+  target_compile_options(kerneltest_hl INTERFACE "-std=c++17")
+endif()
+# If Concepts are available, use them
+if(ENABLE_CXX_CONCEPTS)
+  target_compile_options(kerneltest_hl INTERFACE -fconcepts)
 endif()
 
 # Set the library dependencies this library has
