@@ -307,7 +307,7 @@ namespace child_process
 #else
 #error Unknown platform
 #endif
-    fprintf(stderr, "FATAL: child_process::current_process_path() failed with ret %d code %d\n", ret, errno);
+    fprintf(stderr, "FATAL: child_process::current_process_path() failed with code %d\n", errno);
     abort();
   }
 
