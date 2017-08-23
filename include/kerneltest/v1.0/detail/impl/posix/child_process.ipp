@@ -296,10 +296,10 @@ namespace child_process
       return filesystem::path::string_type(buffer, len);
     }
 #elif defined(__FreeBSD__)
-    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, getpid()};
+    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     size_t len = PATH_MAX;
     int ret = sysctl(mib, 4, buffer, &len, NULL, 0);
-    if(ret > 0)
+    if(ret >= 0)
     {
       buffer[len] = 0;
       return filesystem::path::string_type(buffer, len);
@@ -307,7 +307,7 @@ namespace child_process
 #else
 #error Unknown platform
 #endif
-    fprintf(stderr, "FATAL: child_process::current_process_path() failed with code %d\n", errno);
+    fprintf(stderr, "FATAL: child_process::current_process_path() failed with ret %d code %d\n", ret, errno);
     abort();
   }
 
