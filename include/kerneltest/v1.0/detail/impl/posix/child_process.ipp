@@ -35,6 +35,7 @@ Distributed under the Boost Software License, Version 1.0.
 
 #ifdef __FreeBSD__
 #include <sys/sysctl.h>
+extern "C" char **environ;
 #endif
 
 KERNELTEST_V1_NAMESPACE_BEGIN
