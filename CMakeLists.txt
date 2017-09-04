@@ -59,7 +59,11 @@ if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
     indented_message(FATAL_ERROR "This STL's std::tuple cannot do aggregate initialisation, "
     "and enabling C++ 17 didn't help so bailing out, sorry")
   endif()
-  target_compile_options(kerneltest_hl INTERFACE "-std=c++1z")
+  foreach(feature ${CMAKE_CXX_COMPILE_FEATURES})
+    if(feature STREQUAL cxx_std_17)
+      target_compile_features(kerneltest_hl PUBLIC cxx_std_17)
+    endif()
+  endforeach()
 endif()
 # If Concepts are available, use them
 if(ENABLE_CXX_CONCEPTS)
