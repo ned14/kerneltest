@@ -91,7 +91,14 @@ namespace detail
     {
     }
   };
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4100)  // unreferenced formal parameter
+#endif
   template <class Hook, class Permuter, class Outcome, class... Types, size_t... Idxs> auto instantiate_hook(Hook &&hook, Permuter *parent, Outcome &out, size_t idx, const std::tuple<Types...> &pars, std::index_sequence<Idxs...>) { return hook(parent, out, idx, std::get<Idxs>(pars)...); }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
   template <class... Hooks, class Permuter, class Outcome, class ParamSequence, size_t... Idxs> auto instantiate_hooks(const std::tuple<Hooks...> &hooks, Permuter *parent, Outcome &out, size_t idx, const ParamSequence &pars, std::index_sequence<Idxs...>)
   {
     // callspec is (parameter_permuter<...> *parent, outcome<T> &testret, size_t, pars)
@@ -103,7 +110,14 @@ namespace detail
     instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...};
   }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4100)  // unreferenced formal parameter
+#endif
   template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
   template <class U, class... Types, size_t... Idxs> auto call_f_with_tuple(U &&f, const std::tuple<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
 
   template <class T, class U, class V, class A, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<A, B, C> &shouldbe) { return kernel_outcome.value() == shouldbe; };
@@ -276,26 +290,26 @@ public:
         }
       };
 //! \todo Need to install signal handlers for each permutation execution thread somehow
-#ifdef _WIN32
+#if 0  // def _WIN32
       __try
       {
 #endif
-        nested_f(idx);
-#ifdef _WIN32
-      }
-#ifdef _MSC_VER
+      nested_f(idx);
+#if 0  // def _WIN32
+    }
+#if 0  // def _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 6320)  // SA warning about catching all exceptions
 #endif
-      __except(EXCEPTION_EXECUTE_HANDLER)
-      {
-        kerneltest_errc code = kerneltest_errc::setup_seh_exception_thrown;
-        if(1 == stage)
-          code = kerneltest_errc::kernel_seh_exception_thrown;
-        else if(2 == stage)
-          code = kerneltest_errc::teardown_seh_exception_thrown;
-        results[idx] = {make_error_code(code)};
-      }
+    __except(EXCEPTION_EXECUTE_HANDLER)
+    {
+      kerneltest_errc code = kerneltest_errc::setup_seh_exception_thrown;
+      if(1 == stage)
+        code = kerneltest_errc::kernel_seh_exception_thrown;
+      else if(2 == stage)
+        code = kerneltest_errc::teardown_seh_exception_thrown;
+      results[idx] = {make_error_code(code)};
+    }
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
