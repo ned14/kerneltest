@@ -130,14 +130,15 @@ namespace detail
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
+      std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
+      std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
-      if(kernel_outcome.value().error().default_error_condition() == shouldbe.error())
+      if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
         return true;
 #ifndef _WIN32
       // Some POSIX STLs don't map system_category to generic_category, which is stupid
-      std::error_code ec(kernel_outcome.value().error());
-      if(ec.category() == std::system_category() && shouldbe.error().category() == std::generic_category())
-        return ec.value() == shouldbe.error().value();
+      if(kernel_outcome_ec.category() == std::system_category() && shouldbe_ec.category() == std::generic_category())
+        return kernel_outcome_ec.value() == shouldbe_ec.value();
 #endif
       return false;
     }
@@ -150,14 +151,15 @@ namespace detail
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
+      std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
+      std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
-      if(kernel_outcome.value().error().default_error_condition() == shouldbe.error())
+      if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
         return true;
 #ifndef _WIN32
       // Some POSIX STLs don't map system_category to generic_category, which is stupid
-      std::error_code ec(kernel_outcome.value().error());
-      if(ec.category() == std::system_category() && shouldbe.error().category() == std::generic_category())
-        return ec.value() == shouldbe.error().value();
+      if(kernel_outcome_ec.category() == std::system_category() && shouldbe_ec.category() == std::generic_category())
+        return kernel_outcome_ec.value() == shouldbe_ec.value();
 #endif
       return false;
     }
