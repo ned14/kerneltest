@@ -38,6 +38,7 @@ Distributed under the Boost Software License, Version 1.0.
 extern "C" char **environ;
 #endif
 #ifdef __APPLE__
+#include <mach-o/dyld.h>  // for _NSGetExecutablePath
 extern "C" char **environ;
 #endif
 
@@ -306,6 +307,12 @@ namespace child_process
     {
       buffer[len] = 0;
       return filesystem::path::string_type(buffer, len);
+    }
+#elif defined(__APPLE__)
+    uint32_t bufsize = PATH_MAX;
+    if(_NSGetExecutablePath(buffer, &bufsize) == 0)
+    {
+      return filesystem::path::string_type(buffer);
     }
 #else
 #error Unknown platform
