@@ -277,7 +277,7 @@ public:
           else if(2 == stage)
             code = kerneltest_errc::teardown_exception_thrown;
 #if 1
-          results[idx] = {make_error_code(code)};
+          results[idx] = return_type(in_place_type<typename return_type::error_type>, make_error_code(code));
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
 #else
           try
@@ -579,7 +579,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
     \
-(testreturn) = {make_error_code(kerneltest_errc::check_failed)};                                                                                                                                                                                                                                                               \
+(testreturn) = std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                                 \
   \
 }
 

@@ -456,10 +456,10 @@ namespace hooks
             {
               // Propagate any error
               if(workspaces_not_identical->has_error())
-                testret = {make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)};  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
+                testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)));  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
               // Set error with extended message of the path which differs
               else if(workspaces_not_identical->has_value())
-                testret = {make_error_code(kerneltest_errc::filesystem_comparison_failed)};  // , workspaces_not_identical->value().string().c_str()
+                testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_failed)));  // , workspaces_not_identical->value().string().c_str()
             }
           }
         }
