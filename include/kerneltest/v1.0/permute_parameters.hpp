@@ -579,7 +579,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
     \
-(testreturn) = std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                                 \
+(testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                                 \
   \
 }
 
