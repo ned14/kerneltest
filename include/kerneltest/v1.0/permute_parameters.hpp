@@ -143,7 +143,7 @@ namespace detail
       return false;
     }
     else
-      return kernel_outcome.value() == shouldbe;
+      return false;
   };
   template <class T, class U, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<void, B> &shouldbe)
   {
@@ -164,8 +164,29 @@ namespace detail
       return false;
     }
     else
-      return kernel_outcome.value() == shouldbe;
+      return false;
   };
+
+  template <class T, class U, class V, class A, class B, class C, typename = decltype(std::declval<outcome<T, U, V>>() == std::declval<outcome<A, B, C>>())> inline bool compare(const outcome<T, U, V> &a, const outcome<A, B, C> &b) { return a == b; }
+  template <class T, class U, class V, class B, class C> inline bool compare(const outcome<T, U, V> &a, const outcome<void, B, C> &b)
+  {
+    if(a.has_value() && b.has_value())
+      return true;
+    if(a.has_error() && b.has_error())
+      return a.error() == b.error();
+    if(a.has_exception() && b.has_exception())
+      return a.exception() == b.exception();
+    return false;
+  }
+  template <class T, class U, class A, class B, typename = decltype(std::declval<result<T, U>>() == std::declval<result<A, B>>())> inline bool compare(const result<T, U> &a, const result<A, B> &b) { return a == b; }
+  template <class T, class U, class B> inline bool compare(const result<T, U> &a, const result<void, B> &b)
+  {
+    if(a.has_value() && b.has_value())
+      return true;
+    if(a.has_error() && b.has_error())
+      return a.error() == b.error();
+    return false;
+  }
 }
 
 /*! \brief A parameter permuter instance
@@ -565,7 +586,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 {
   // Note that we accumulate failures into the checks vector for later processing
   std::vector<std::function<void()>> checks;
-  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(result.value() == shouldbe); }); }), pretty_print_success(permuter));
+  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(detail::compare(result.value(), shouldbe)); }); }), pretty_print_success(permuter));
   BOOST_CHECK(all_passed);
   // The pretty printing gets messed up by the unit test output, so defer telling it
   // about failures until now
@@ -579,7 +600,7 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
     \
-(testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                                 \
+(testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                        \
   \
 }
 
