@@ -77,9 +77,9 @@ namespace child_process
     si.cb = sizeof(STARTUPINFO);
     si.dwFlags = STARTF_USESTDHANDLES;
     if(!CreatePipe(&childreadh.h, &ret._readh.h, nullptr, 0))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     if(!CreatePipe(&ret._writeh.h, &childwriteh.h, nullptr, 0))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
 
     if(use_parent_errh)
     {
@@ -98,10 +98,10 @@ namespace child_process
       randomname[8] = '\\';
       ret._errh.h = CreateNamedPipeA(randomname, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_WRITE_THROUGH, PIPE_TYPE_BYTE, 1, 0, 0, 0, nullptr);
       if(!ret._errh.h)
-        return {GetLastError(), std::system_category()};
+        return win32_error();
       childerrh.h = CreateFileA(randomname, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, nullptr);
       if(!childerrh.h)
-        return {GetLastError(), std::system_category()};
+        return win32_error();
     }
 
     auto unmypipes = undoer([&] {
@@ -126,11 +126,11 @@ namespace child_process
     si.hStdOutput = childwriteh.h;
     si.hStdError = childerrh.h;
     if(!SetHandleInformation(si.hStdInput, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     if(!SetHandleInformation(si.hStdOutput, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     if(!SetHandleInformation(si.hStdError, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
 
     PROCESS_INFORMATION pi;
     char_type argsbuffer[32768], *argsbuffere = argsbuffer;
@@ -143,7 +143,7 @@ namespace child_process
     for(auto &arg : ret._args)
     {
       if(argsbuffere - argsbuffer + arg.size() + 1 >= 32767)
-        return std::errc::value_too_large;
+        return errc::value_too_large;
       memcpy(argsbuffere, arg.data(), sizeof(char_type) * arg.size());
       argsbuffere += arg.size();
       *argsbuffere++ = ' ';
@@ -153,7 +153,7 @@ namespace child_process
     for(auto &env : ret._env)
     {
       if(envbuffere - envbuffer + env.first.size() + env.second.size() + 2 >= 32767)
-        return std::errc::value_too_large;
+        return errc::value_too_large;
       memcpy(envbuffere, env.first.data(), sizeof(char_type) * env.first.size());
       envbuffere += env.first.size();
       *envbuffere++ = '=';
@@ -162,7 +162,7 @@ namespace child_process
     }
     *envbuffere = 0;
     if(!CreateProcess(ret._path.c_str(), argsbuffer, nullptr, nullptr, true, CREATE_UNICODE_ENVIRONMENT, envbuffer, nullptr, &si, &pi))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     ret._processh.h = pi.hProcess;
     unmypipes.dismiss();
 
@@ -193,12 +193,12 @@ namespace child_process
     }
     DWORD ret = WaitForSingleObject(_processh.h, timeout);
     if(WAIT_TIMEOUT == ret)
-      return std::errc::timed_out;
+      return errc::timed_out;
     if(WAIT_OBJECT_0 != ret)
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     DWORD retcode = 0;
     if(!GetExitCodeProcess(_processh.h, &retcode))
-      return {GetLastError(), std::system_category()};
+      return win32_error();
     return (intptr_t) retcode;
   }
 

@@ -130,6 +130,13 @@ namespace detail
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
+#if KERNELTEST_EXPERIMENTAL_STATUS_CODE
+      auto kernel_outcome_sc = kernel_outcome.value().error();
+      auto shouldbe_sc = shouldbe.error();
+      // match errors for semantic equivalence
+      if(kernel_outcome_sc == shouldbe_sc)
+        return true;
+#else
       std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
       std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
@@ -139,6 +146,7 @@ namespace detail
       // Some POSIX STLs don't map system_category to generic_category, which is stupid
       if(kernel_outcome_ec.category() == std::system_category() && shouldbe_ec.category() == std::generic_category())
         return kernel_outcome_ec.value() == shouldbe_ec.value();
+#endif
 #endif
       return false;
     }
@@ -151,6 +159,13 @@ namespace detail
       return kernel_outcome.value().has_value() == shouldbe.has_value();
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
+#if KERNELTEST_EXPERIMENTAL_STATUS_CODE
+      auto kernel_outcome_sc = kernel_outcome.value().error();
+      auto shouldbe_sc = shouldbe.error();
+      // match errors for semantic equivalence
+      if(kernel_outcome_sc == shouldbe_sc)
+        return true;
+#else
       std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
       std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
@@ -160,6 +175,7 @@ namespace detail
       // Some POSIX STLs don't map system_category to generic_category, which is stupid
       if(kernel_outcome_ec.category() == std::system_category() && shouldbe_ec.category() == std::generic_category())
         return kernel_outcome_ec.value() == shouldbe_ec.value();
+#endif
 #endif
       return false;
     }

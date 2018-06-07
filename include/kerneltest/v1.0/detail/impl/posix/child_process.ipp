@@ -79,11 +79,11 @@ namespace child_process
 
     int temp[2];
     if(-1 == ::pipe(temp))
-      return {errno, std::system_category()};
+      return posix_error();
     childreadh.fd = temp[0];
     ret._readh.fd = temp[1];
     if(-1 == ::pipe(temp))
-      return {errno, std::system_category()};
+      return posix_error();
     ret._writeh.fd = temp[0];
     childwriteh.fd = temp[1];
 
@@ -94,7 +94,7 @@ namespace child_process
     else
     {
       if(-1 == ::pipe(temp))
-        return {errno, std::system_category()};
+        return posix_error();
       ret._errh.fd = temp[0];
       childerrh.fd = temp[1];
     }
@@ -118,11 +118,11 @@ namespace child_process
     });
 
     if(-1 == ::fcntl(ret._readh.fd, F_SETFD, FD_CLOEXEC))
-      return {errno, std::system_category()};
+      return posix_error();
     if(-1 == ::fcntl(ret._writeh.fd, F_SETFD, FD_CLOEXEC))
-      return {errno, std::system_category()};
+      return posix_error();
     if(!use_parent_errh && -1 == ::fcntl(ret._errh.fd, F_SETFD, FD_CLOEXEC))
-      return {errno, std::system_category()};
+      return posix_error();
 
     std::vector<const char *> argptrs(ret._args.size() + 2);
     argptrs[0] = ret._path.c_str();
@@ -171,36 +171,36 @@ namespace child_process
       }
     }
     if(-1 == ret._processh.fd)
-      return { errno, std::system_category() };
+      return posix_error();
 #else
     posix_spawn_file_actions_t child_fd_actions;
     int err = ::posix_spawn_file_actions_init(&child_fd_actions);
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childreadh.fd, STDIN_FILENO);
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childreadh.fd);
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childwriteh.fd, STDOUT_FILENO);
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childwriteh.fd);
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     if(!use_parent_errh)
     {
       err = ::posix_spawn_file_actions_adddup2(&child_fd_actions, childerrh.fd, STDERR_FILENO);
       if(err)
-        return {err, std::system_category()};
+        return posix_error(err);
       err = ::posix_spawn_file_actions_addclose(&child_fd_actions, childerrh.fd);
       if(err)
-        return {err, std::system_category()};
+        return posix_error(err);
     }
     err = ::posix_spawn(&ret._processh.pid, ret._path.c_str(), &child_fd_actions, nullptr, (char **) argptrs.data(), (char **) envptrs.data());
     if(err)
-      return {err, std::system_category()};
+      return posix_error(err);
     auto unfdactions = undoer([&] { ::posix_spawn_file_actions_destroy(&child_fd_actions); });
 #endif
     unmypipes.dismiss();
@@ -225,7 +225,7 @@ namespace child_process
   result<intptr_t> child_process::wait_until(std::chrono::steady_clock::time_point d) noexcept
   {
     if(!_processh)
-      return std::errc::no_child_process;
+      return errc::no_child_process;
     intptr_t ret = 0;
     auto check_child = [&]() -> result<bool> {
       siginfo_t info;
@@ -234,7 +234,7 @@ namespace child_process
       if(d != std::chrono::steady_clock::time_point())
         options |= WNOHANG;
       if(-1 == ::waitid(P_PID, _processh.pid, &info, options))
-        return {errno, std::system_category()};
+        return posix_error();
       if(info.si_signo == SIGCHLD)
       {
         ret = info.si_status;
@@ -251,7 +251,7 @@ namespace child_process
         return ret;
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } while(d == std::chrono::steady_clock::time_point() || std::chrono::steady_clock::now() < d);
-    return std::errc::timed_out;
+    return errc::timed_out;
 #if 0
     // If he specified a timeout, we now have considerable work to do in order to do this race free
     // Firstly install a signal handler for SIGCHLD
@@ -282,8 +282,8 @@ namespace child_process
     if(signal < 0)
     {
       if (EAGAIN == errno && d != std::chrono::steady_clock::time_point())
-        return std::errc::timed_out;
-      return { errno, std::system_category() };
+        return errc::timed_out;
+      return posix_error();
     }
 #endif
   }

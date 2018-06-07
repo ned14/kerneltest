@@ -30,6 +30,12 @@ Distributed under the Boost Software License, Version 1.0.
 #define KERNELTEST_HEADERS_ONLY 1
 #endif
 
+#if !defined(KERNELTEST_EXPERIMENTAL_STATUS_CODE)
+//! \brief Whether to use SG14 experimental `status_code` instead of `std::error_code`
+#define KERNELTEST_EXPERIMENTAL_STATUS_CODE 0
+#endif
+
+
 #include "quickcpplib/include/cpp_feature.h"
 
 #ifndef __cpp_exceptions
@@ -150,11 +156,27 @@ function exported from the KernelTest DLL if not building headers only.
 #endif
 
 
+#if KERNELTEST_EXPERIMENTAL_STATUS_CODE
+#include "outcome/include/outcome/experimental/status_outcome.hpp"
+#include "outcome/include/outcome/iostream_support.hpp"
+#include "outcome/include/outcome/experimental/status-code/include/system_code_from_exception.hpp"
+KERNELTEST_V1_NAMESPACE_BEGIN
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::erased_result<R, S>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr> using outcome = OUTCOME_V2_NAMESPACE::experimental::erased_outcome<R, S, P>;
+using OUTCOME_V2_NAMESPACE::success;
+using OUTCOME_V2_NAMESPACE::failure;
+using OUTCOME_V2_NAMESPACE::in_place_type;
+KERNELTEST_V1_NAMESPACE_END
+#else
 #include "outcome/include/outcome.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
-// We are so heavily tied into Outcome we just import it wholesale into our namespace
-using namespace OUTCOME_V2_NAMESPACE;
+using OUTCOME_V2_NAMESPACE::result;
+using OUTCOME_V2_NAMESPACE::outcome;
+using OUTCOME_V2_NAMESPACE::success;
+using OUTCOME_V2_NAMESPACE::failure;
+using OUTCOME_V2_NAMESPACE::in_place_type;
 KERNELTEST_V1_NAMESPACE_END
+#endif
 
 // We need an aggregate initialisable collection of heterogeneous types
 #include <tuple>
@@ -210,6 +232,7 @@ static QUICKCPPLIB_THREAD_LOCAL struct current_test_kernel_t
 //! \brief Enumeration of the ways in which a kernel test may fail
 enum class kerneltest_errc
 {
+  success = 0,       //!< Nothing failed
   check_failed = 1,  //!< A KERNELTEST_CHECK failed
 
   setup_exception_thrown = 4,     //!< A C++ exception was thrown during the kernel hook setup
@@ -231,49 +254,145 @@ enum class kerneltest_errc
 
 namespace detail
 {
+  inline const char *message(kerneltest_errc c) noexcept
+  {
+    switch(c)
+    {
+    case kerneltest_errc::success:
+      return "success";
+    case kerneltest_errc::check_failed:
+      return "KERNELTEST_CHECK() failure";
+
+    case kerneltest_errc::setup_exception_thrown:
+      return "C++ exception thrown during kernel setup";
+    case kerneltest_errc::kernel_exception_thrown:
+      return "C++ exception thrown during kernel execution";
+    case kerneltest_errc::teardown_exception_thrown:
+      return "C++ exception thrown during kernel teardown";
+
+    case kerneltest_errc::setup_seh_exception_thrown:
+      return "SEH exception thrown during kernel setup";
+    case kerneltest_errc::kernel_seh_exception_thrown:
+      return "SEH exception thrown during kernel execution";
+    case kerneltest_errc::teardown_seh_exception_thrown:
+      return "SEH exception thrown during kernel teardown";
+
+    case kerneltest_errc::setup_signal_thrown:
+      return "signal thrown during kernel setup";
+    case kerneltest_errc::kernel_signal_thrown:
+      return "signal thrown during kernel execution";
+    case kerneltest_errc::teardown_signal_thrown:
+      return "signal thrown during kernel teardown";
+
+    case kerneltest_errc::filesystem_setup_internal_failure:
+      return "filesystem_setup internal failure";
+    case kerneltest_errc::filesystem_comparison_internal_failure:
+      return "filesystem_comparison internal failure";
+    case kerneltest_errc::filesystem_comparison_failed:
+      return "filesystem comparison failed";
+
+    default:
+      return "unknown";
+    }
+  }
+}
+
+#if KERNELTEST_EXPERIMENTAL_STATUS_CODE
+class _kerneltest_domain;
+using kerneltest_code = SYSTEM_ERROR2_NAMESPACE::status_code<_kerneltest_domain>;
+class _kerneltest_domain : public SYSTEM_ERROR2_NAMESPACE::status_code_domain
+{
+  template <class DomainType> friend class SYSTEM_ERROR2_NAMESPACE::status_code;
+  using _base = SYSTEM_ERROR2_NAMESPACE::status_code_domain;
+
+public:
+  constexpr _kerneltest_domain()
+      : _base(0x4915711429d0065a)
+  {
+  }
+  using value_type = kerneltest_errc;
+  using string_ref = _base::string_ref;
+
+  static inline constexpr const _kerneltest_domain *get();
+
+  virtual string_ref name() const noexcept override final { return string_ref("kerneltest domain"); }  // NOLINT
+protected:
+  virtual bool _failure(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  {
+    assert(code.domain() == *this);
+    return static_cast<const kerneltest_code &>(code).value() != kerneltest_errc::success;  // NOLINT
+  }
+  virtual bool _equivalent(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code1, const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code2) const noexcept
+  {
+    assert(code1.domain() == *this);
+    const auto &c1 = static_cast<const kerneltest_code &>(code1);  // NOLINT
+    if(code2.domain() == *this)
+    {
+      const auto &c2 = static_cast<const kerneltest_code &>(code2);  // NOLINT
+      return c1.value() == c2.value();
+    }
+    return false;
+  }
+  virtual SYSTEM_ERROR2_NAMESPACE::generic_code _generic_code(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  {
+    assert(code.domain() == *this);
+    return SYSTEM_ERROR2_NAMESPACE::errc::unknown;
+  }
+  virtual string_ref _message(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  {
+    assert(code.domain() == *this);
+    const auto &c = static_cast<const kerneltest_code &>(code);  // NOLINT
+    return string_ref(detail::message(c.value()));
+  }
+  virtual void _throw_exception(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const
+  {
+    assert(code.domain() == *this);
+    const auto &c = static_cast<const kerneltest_code &>(code);  // NOLINT
+    throw SYSTEM_ERROR2_NAMESPACE::status_error<_kerneltest_domain>(c);
+  }
+};
+constexpr _kerneltest_domain kerneltest_domain;
+inline constexpr const _kerneltest_domain *_kerneltest_domain::get()
+{
+  return &kerneltest_domain;
+}
+
+//! \brief ADL looked up by the STL to convert a kerneltest_errc into a kerneltest_code.
+inline SYSTEM_ERROR2_NAMESPACE::system_code make_error_code(kerneltest_errc e)
+{
+  return kerneltest_code(e);
+}
+
+//! Choose an errc implementation
+using SYSTEM_ERROR2_NAMESPACE::errc;
+
+#ifndef _WIN32
+//! Helper for constructing an error code from a POSIX errno
+inline SYSTEM_ERROR2_NAMESPACE::system_code posix_error(int c = errno)
+{
+  return SYSTEM_ERROR2_NAMESPACE::posix_code(c);
+}
+#else
+//! Helper for constructing an error code from a DWORD
+inline SYSTEM_ERROR2_NAMESPACE::system_code win32_error(SYSTEM_ERROR2_NAMESPACE::win32::DWORD c = SYSTEM_ERROR2_NAMESPACE::win32::GetLastError())
+{
+  return SYSTEM_ERROR2_NAMESPACE::win32_code(c);
+}
+#endif
+
+inline SYSTEM_ERROR2_NAMESPACE::system_code error_from_exception(std::exception_ptr &&ep = std::current_exception(), SYSTEM_ERROR2_NAMESPACE::system_code not_matched = SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::resource_unavailable_try_again)) noexcept
+{
+  return SYSTEM_ERROR2_NAMESPACE::system_code_from_exception(std::move(ep), not_matched);
+}
+
+#else
+namespace detail
+{
   class kerneltest_category : public std::error_category
   {
   public:
     virtual const char *name() const noexcept { return "kerneltest"; }
-    virtual std::string message(int c) const
-    {
-      switch(c)
-      {
-      case 1:
-        return "KERNELTEST_CHECK() failure";
-
-      case 4:
-        return "C++ exception thrown during kernel setup";
-      case 5:
-        return "C++ exception thrown during kernel execution";
-      case 6:
-        return "C++ exception thrown during kernel teardown";
-
-      case 8:
-        return "SEH exception thrown during kernel setup";
-      case 9:
-        return "SEH exception thrown during kernel execution";
-      case 10:
-        return "SEH exception thrown during kernel teardown";
-
-      case 12:
-        return "signal thrown during kernel setup";
-      case 13:
-        return "signal thrown during kernel execution";
-      case 14:
-        return "signal thrown during kernel teardown";
-
-      case 256:
-        return "filesystem_setup internal failure";
-      case 257:
-        return "filesystem_comparison internal failure";
-      case 258:
-        return "filesystem comparison failed";
-
-      default:
-        return "unknown";
-      }
-    }
+    virtual std::string message(int c) const { return message(static_cast<kerneltest_errc>(c)); }
   };
 }
 
@@ -302,6 +421,24 @@ inline std::error_code make_error_code(kerneltest_errc e)
   return std::error_code(static_cast<int>(e), kerneltest_category());
 }
 
+//! Choose an errc implementation
+using std::errc;
+
+#ifndef _WIN32
+//! Helper for constructing an error code from a POSIX errno
+inline std::error_code posix_error(int c = errno)
+{
+  return {c, std::system_category()};
+}
+#else
+//! Helper for constructing an error code from a DWORD
+inline std::error_code win32_error(DWORD c = GetLastError())
+{
+  return {c, std::system_category()};
+}
+#endif
+
+#endif
 
 KERNELTEST_V1_NAMESPACE_END
 
