@@ -137,8 +137,8 @@ namespace detail
       if(kernel_outcome_sc == shouldbe_sc)
         return true;
 #else
-      std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
-      std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
+      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome.value().error());
+      std::error_code shouldbe_ec = OUTCOME_V2_NAMESPACE::policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
       if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
         return true;
@@ -166,8 +166,8 @@ namespace detail
       if(kernel_outcome_sc == shouldbe_sc)
         return true;
 #else
-      std::error_code kernel_outcome_ec = policy::error_code(kernel_outcome.value().error());
-      std::error_code shouldbe_ec = policy::error_code(shouldbe.error());
+      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome.value().error());
+      std::error_code shouldbe_ec = OUTCOME_V2_NAMESPACE::policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
       if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
         return true;

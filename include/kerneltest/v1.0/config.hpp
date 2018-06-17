@@ -175,6 +175,7 @@ using OUTCOME_V2_NAMESPACE::outcome;
 using OUTCOME_V2_NAMESPACE::success;
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
+using OUTCOME_V2_NAMESPACE::error_from_exception;
 KERNELTEST_V1_NAMESPACE_END
 #endif
 
@@ -392,7 +393,7 @@ namespace detail
   {
   public:
     virtual const char *name() const noexcept { return "kerneltest"; }
-    virtual std::string message(int c) const { return message(static_cast<kerneltest_errc>(c)); }
+    virtual std::string message(int c) const { return detail::message(static_cast<kerneltest_errc>(c)); }
   };
 }
 
@@ -431,10 +432,19 @@ inline std::error_code posix_error(int c = errno)
   return {c, std::system_category()};
 }
 #else
-//! Helper for constructing an error code from a DWORD
-inline std::error_code win32_error(DWORD c = GetLastError())
+namespace win32
 {
-  return {c, std::system_category()};
+  // A Win32 DWORD
+  using DWORD = unsigned long;
+  // Used to retrieve the current Win32 error code
+  extern "C" DWORD __stdcall GetLastError();
+#pragma comment(lib, "kernel32.lib")
+}  // namespace win32
+
+//! Helper for constructing an error code from a DWORD
+inline std::error_code win32_error(win32::DWORD c = win32::GetLastError())
+{
+  return {static_cast<int>(c), std::system_category()};
 }
 #endif
 
