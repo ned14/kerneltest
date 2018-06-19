@@ -314,16 +314,16 @@ public:
   using value_type = kerneltest_errc;
   using string_ref = _base::string_ref;
 
-  static inline constexpr const _kerneltest_domain *get();
+  static inline constexpr const _kerneltest_domain &get();
 
   virtual string_ref name() const noexcept override final { return string_ref("kerneltest domain"); }  // NOLINT
 protected:
-  virtual bool _failure(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  virtual bool _do_failure(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept override
   {
     assert(code.domain() == *this);
     return static_cast<const kerneltest_code &>(code).value() != kerneltest_errc::success;  // NOLINT
   }
-  virtual bool _equivalent(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code1, const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code2) const noexcept
+  virtual bool _do_equivalent(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code1, const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code2) const noexcept override
   {
     assert(code1.domain() == *this);
     const auto &c1 = static_cast<const kerneltest_code &>(code1);  // NOLINT
@@ -334,18 +334,18 @@ protected:
     }
     return false;
   }
-  virtual SYSTEM_ERROR2_NAMESPACE::generic_code _generic_code(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  virtual SYSTEM_ERROR2_NAMESPACE::generic_code _generic_code(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept override
   {
     assert(code.domain() == *this);
     return SYSTEM_ERROR2_NAMESPACE::errc::unknown;
   }
-  virtual string_ref _message(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept
+  virtual string_ref _do_message(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept override
   {
     assert(code.domain() == *this);
     const auto &c = static_cast<const kerneltest_code &>(code);  // NOLINT
     return string_ref(detail::message(c.value()));
   }
-  virtual void _throw_exception(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const
+  virtual void _do_throw_exception(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const override
   {
     assert(code.domain() == *this);
     const auto &c = static_cast<const kerneltest_code &>(code);  // NOLINT
@@ -353,9 +353,9 @@ protected:
   }
 };
 constexpr _kerneltest_domain kerneltest_domain;
-inline constexpr const _kerneltest_domain *_kerneltest_domain::get()
+inline constexpr const _kerneltest_domain &_kerneltest_domain::get()
 {
-  return &kerneltest_domain;
+  return kerneltest_domain;
 }
 
 //! \brief ADL looked up by the STL to convert a kerneltest_errc into a kerneltest_code.
