@@ -336,6 +336,7 @@ protected:
   }
   virtual SYSTEM_ERROR2_NAMESPACE::generic_code _generic_code(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept override
   {
+    (void) code;
     assert(code.domain() == *this);
     return SYSTEM_ERROR2_NAMESPACE::errc::unknown;
   }
