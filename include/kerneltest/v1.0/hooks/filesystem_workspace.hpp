@@ -265,7 +265,102 @@ namespace hooks
           auto begin = std::chrono::steady_clock::now();
           do
           {
-            filesystem::copy(template_path, _current, filesystem::copy_options::recursive, ec);
+            // VS2017 still doesn't understand symlinks :(, so copy in the starting filesystem environment by hand
+            struct _
+            {
+              static void copy_level(const filesystem::path &srcdir, const filesystem::path &destdir, std::error_code &ec)
+              {
+                for(filesystem::directory_iterator it(srcdir); it != filesystem::directory_iterator(); ++it)
+                {
+#ifdef _WIN32
+                  typedef struct _REPARSE_DATA_BUFFER  // NOLINT
+                  {
+                    ULONG ReparseTag;
+                    USHORT ReparseDataLength;
+                    USHORT Reserved;
+                    union {
+                      struct
+                      {
+                        USHORT SubstituteNameOffset;
+                        USHORT SubstituteNameLength;
+                        USHORT PrintNameOffset;
+                        USHORT PrintNameLength;
+                        ULONG Flags;
+                        WCHAR PathBuffer[1];
+                      } SymbolicLinkReparseBuffer;
+                      struct
+                      {
+                        USHORT SubstituteNameOffset;
+                        USHORT SubstituteNameLength;
+                        USHORT PrintNameOffset;
+                        USHORT PrintNameLength;
+                        WCHAR PathBuffer[1];
+                      } MountPointReparseBuffer;
+                      struct
+                      {
+                        UCHAR DataBuffer[1];
+                      } GenericReparseBuffer;
+                    };
+                  } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+                  bool is_symlink = false;
+                  HANDLE h = CreateFileW(it->path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+                  if(h == INVALID_HANDLE_VALUE)
+                  {
+                    ec = std::error_code(GetLastError(), std::system_category());
+                    return;
+                  }
+                  TCHAR buffer[32769];
+                  auto *rpd = (REPARSE_DATA_BUFFER *) buffer;
+                  DWORD read = 0, written = 0;
+                  if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd, (DWORD) sizeof(buffer), &read, NULL))
+                  {
+                    is_symlink = true;
+                    CloseHandle(h);
+                    auto destpath = destdir / it->path().filename();
+                    h = CreateFileW(destpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ | FILE_WRITE_ATTRIBUTES | STANDARD_RIGHTS_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_ALWAYS, 0, NULL);
+                    if(h == INVALID_HANDLE_VALUE)
+                    {
+                      ec = std::error_code(GetLastError(), std::system_category());
+                      return;
+                    }
+                    if(!DeviceIoControl(h, FSCTL_SET_REPARSE_POINT, rpd, read, NULL, 0, &written, NULL))
+                    {
+                      ec = std::error_code(GetLastError(), std::system_category());
+                      CloseHandle(h);
+                      return;
+                    }
+                  }
+                  CloseHandle(h);
+                  if(is_symlink)
+                    continue;
+#else
+                  if(filesystem::is_symlink(it->status()))
+                  {
+                    filesystem::copy_symlink(it->path(), destdir / it->path().filename(), ec);
+                    if(ec)
+                      return;
+                  }
+#endif
+                  else if(filesystem::is_directory(it->status()))
+                  {
+                    filesystem::create_directory(destdir / it->path().filename(), ec);
+                    ec.clear();
+                    copy_level(it->path(), destdir / it->path().filename(), ec);
+                    if(ec)
+                      return;
+                  }
+                  else if(filesystem::is_regular_file(it->status()))
+                  {
+                    filesystem::copy_file(it->path(), destdir / it->path().filename(), ec);
+                    if(ec)
+                      return;
+                  }
+                }
+              }
+            };
+            filesystem::create_directory(_current, ec);
+            ec.clear();
+            _::copy_level(template_path, _current, ec);
             if(!ec)
               break;
           } while(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count() < 5);
@@ -322,7 +417,7 @@ namespace hooks
       {
         for(filesystem::directory_iterator it(path); it != filesystem::directory_iterator(); ++it)
         {
-          if(filesystem::is_directory(it->status()))
+          if(!filesystem::is_symlink(it->path()) /* work around bug in libstdc++ */ && filesystem::is_directory(it->status()))
           {
             auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
             if(ret)
@@ -362,6 +457,89 @@ namespace hooks
           {
             filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
             filesystem::path afterpath(after / leafpath);
+#ifdef _WIN32
+            if((GetFileAttributesW(dirent.path().c_str()) & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+            {
+              typedef struct _REPARSE_DATA_BUFFER  // NOLINT
+              {
+                ULONG ReparseTag;
+                USHORT ReparseDataLength;
+                USHORT Reserved;
+                union {
+                  struct
+                  {
+                    USHORT SubstituteNameOffset;
+                    USHORT SubstituteNameLength;
+                    USHORT PrintNameOffset;
+                    USHORT PrintNameLength;
+                    ULONG Flags;
+                    WCHAR PathBuffer[1];
+                  } SymbolicLinkReparseBuffer;
+                  struct
+                  {
+                    USHORT SubstituteNameOffset;
+                    USHORT SubstituteNameLength;
+                    USHORT PrintNameOffset;
+                    USHORT PrintNameLength;
+                    WCHAR PathBuffer[1];
+                  } MountPointReparseBuffer;
+                  struct
+                  {
+                    UCHAR DataBuffer[1];
+                  } GenericReparseBuffer;
+                };
+              } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+              TCHAR buffer1[32769], buffer2[32769];
+              memset(buffer1, 0, sizeof(buffer1));
+              memset(buffer2, 0, sizeof(buffer2));
+              auto *rpd1 = (REPARSE_DATA_BUFFER *) buffer1;
+              auto *rpd2 = (REPARSE_DATA_BUFFER *) buffer2;
+              DWORD read1 = 0, read2 = 0;
+              HANDLE h = CreateFileW(dirent.path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+              if(h != INVALID_HANDLE_VALUE)
+              {
+                if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd1, (DWORD) sizeof(buffer1), &read1, NULL))
+                {
+                  CloseHandle(h);
+                }
+                else
+                {
+                  CloseHandle(h);
+                  goto differs;
+                }
+              }
+              h = CreateFileW(afterpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+              if(h != INVALID_HANDLE_VALUE)
+              {
+                if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd2, (DWORD) sizeof(buffer2), &read2, NULL))
+                {
+                  CloseHandle(h);
+                }
+                else
+                {
+                  CloseHandle(h);
+                  goto differs;
+                }
+              }
+              if(rpd1->ReparseTag != rpd2->ReparseTag)
+                goto differs;
+              switch(rpd1->ReparseTag)
+              {
+              case IO_REPARSE_TAG_SYMLINK:
+                if(rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength != rpd2->SymbolicLinkReparseBuffer.SubstituteNameLength)
+                  goto differs;
+                if(memcmp(rpd1->SymbolicLinkReparseBuffer.PathBuffer + rpd1->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd2->SymbolicLinkReparseBuffer.PathBuffer + rpd2->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength) != 0)
+                  goto differs;
+                break;
+              case IO_REPARSE_TAG_MOUNT_POINT:
+                if(rpd1->MountPointReparseBuffer.SubstituteNameLength != rpd2->MountPointReparseBuffer.SubstituteNameLength)
+                  goto differs;
+                if(memcmp(rpd1->MountPointReparseBuffer.PathBuffer + rpd1->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd2->MountPointReparseBuffer.PathBuffer + rpd2->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd1->MountPointReparseBuffer.SubstituteNameLength) != 0)
+                  goto differs;
+                break;
+              }
+            }
+#else
             if(filesystem::is_symlink(dirent.symlink_status()))
             {
               if(filesystem::is_symlink(dirent.symlink_status()) != filesystem::is_symlink(filesystem::symlink_status(afterpath)))
@@ -369,6 +547,7 @@ namespace hooks
               if(filesystem::read_symlink(dirent.path()) != filesystem::read_symlink(afterpath))
                 goto differs;
             }
+#endif
             {
               auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
               if(filesystem::is_directory(beforestatus) != filesystem::is_directory(afterstatus))
@@ -410,10 +589,18 @@ namespace hooks
         });
         // If anything different, return that
         if(ret)
+        {
+          KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw item differ " << ret.value() << std::endl);
+          // exit(1);
           return ret;
+        }
         // If anything in after not in current, return that
         if(!after_items.empty())
+        {
+          KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw missing item " << after_items.begin()->first << std::endl);
+          // exit(1);
           return {success(after_items.begin()->first)};
+        }
         // Otherwise both current and after are identical
         return {};
       }
@@ -456,7 +643,15 @@ namespace hooks
             {
               // Propagate any error
               if(workspaces_not_identical->has_error())
+              {
+                KERNELTEST_CERR("WARNING: Workspace comparison saw error " << workspaces_not_identical->error().message() << std::endl);
+#if 0
+                std::cerr << current_test_kernel.working_directory << std::endl;
+                std::cerr << model_workspace << std::endl;
+                exit(1);
+#endif
                 testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)));  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
+              }
               // Set error with extended message of the path which differs
               else if(workspaces_not_identical->has_value())
                 testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_failed)));  // , workspaces_not_identical->value().string().c_str()
