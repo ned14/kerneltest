@@ -590,14 +590,21 @@ namespace hooks
         // If anything different, return that
         if(ret)
         {
-          KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw item differ " << ret.value() << std::endl);
+          if(ret.value())
+          {
+            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw item differ " << ret.value().value() << std::endl);
+          }
+          else
+          {
+            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw error " << ret.value().error() << std::endl);
+          }
           // exit(1);
           return ret;
         }
         // If anything in after not in current, return that
         if(!after_items.empty())
         {
-          KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw missing item " << after_items.begin()->first << std::endl);
+          KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw not present item " << after_items.begin()->first << std::endl);
           // exit(1);
           return {success(after_items.begin()->first)};
         }
@@ -644,12 +651,6 @@ namespace hooks
               // Propagate any error
               if(workspaces_not_identical->has_error())
               {
-                KERNELTEST_CERR("WARNING: Workspace comparison saw error " << workspaces_not_identical->error().message() << std::endl);
-#if 0
-                std::cerr << current_test_kernel.working_directory << std::endl;
-                std::cerr << model_workspace << std::endl;
-                exit(1);
-#endif
                 testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)));  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
               }
               // Set error with extended message of the path which differs

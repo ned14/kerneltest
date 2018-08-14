@@ -313,6 +313,17 @@ public:
             code = kerneltest_errc::kernel_exception_thrown;
           else if(2 == stage)
             code = kerneltest_errc::teardown_exception_thrown;
+          try
+          {
+            throw;
+          }
+          catch(const std::exception &e)
+          {
+            KERNELTEST_CERR("WARNING: C++ exception thrown '" << e.what() << "'" << std::endl);
+          }
+          catch(...)
+          {
+          }
 #if 1
           results[idx] = return_type(in_place_type<typename return_type::error_type>, make_error_code(code));
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
