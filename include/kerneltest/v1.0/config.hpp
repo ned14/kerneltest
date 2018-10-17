@@ -384,7 +384,7 @@ inline SYSTEM_ERROR2_NAMESPACE::system_code win32_error(SYSTEM_ERROR2_NAMESPACE:
 
 inline SYSTEM_ERROR2_NAMESPACE::system_code error_from_exception(std::exception_ptr &&ep = std::current_exception(), SYSTEM_ERROR2_NAMESPACE::system_code not_matched = SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::resource_unavailable_try_again)) noexcept
 {
-  return SYSTEM_ERROR2_NAMESPACE::system_code_from_exception(std::move(ep), not_matched);
+  return SYSTEM_ERROR2_NAMESPACE::system_code_from_exception(std::move(ep), std::move(not_matched));
 }
 
 #else

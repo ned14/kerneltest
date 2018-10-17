@@ -131,7 +131,7 @@ namespace detail
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-      auto kernel_outcome_sc = kernel_outcome.value().error();
+      const auto &kernel_outcome_sc = kernel_outcome.value().error();
       auto shouldbe_sc = shouldbe.error();
       // match errors for semantic equivalence
       if(kernel_outcome_sc == shouldbe_sc)
@@ -160,7 +160,7 @@ namespace detail
     else if(shouldbe.has_error() && kernel_outcome.value().has_error())
     {
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-      auto kernel_outcome_sc = kernel_outcome.value().error();
+      const auto &kernel_outcome_sc = kernel_outcome.value().error();
       auto shouldbe_sc = shouldbe.error();
       // match errors for semantic equivalence
       if(kernel_outcome_sc == shouldbe_sc)
