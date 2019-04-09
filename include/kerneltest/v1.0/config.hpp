@@ -161,8 +161,8 @@ function exported from the KernelTest DLL if not building headers only.
 #include "outcome/include/outcome/iostream_support.hpp"
 #include "outcome/include/outcome/experimental/status-code/include/system_code_from_exception.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::erased_result<R, S>;
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr> using outcome = OUTCOME_V2_NAMESPACE::experimental::erased_outcome<R, S, P>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr> using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
 using OUTCOME_V2_NAMESPACE::success;
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
