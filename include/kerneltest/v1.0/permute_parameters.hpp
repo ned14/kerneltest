@@ -27,8 +27,8 @@ Distributed under the Boost Software License, Version 1.0.
 #ifndef KERNELTEST_PERMUTE_PARAMETERS_HPP
 #define KERNELTEST_PERMUTE_PARAMETERS_HPP
 
-#include "quickcpplib/include/console_colours.hpp"
-#include "quickcpplib/include/type_traits.hpp"
+#include "quickcpplib/console_colours.hpp"
+#include "quickcpplib/type_traits.hpp"
 
 #include <array>
 #include <vector>

@@ -27,8 +27,8 @@ Distributed under the Boost Software License, Version 1.0.
 #ifndef KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 #define KERNELTEST_HOOKS_FILESYSTEM_WORKSPACE_HPP
 
-#include "../quickcpplib/include/algorithm/string.hpp"
-#include "../quickcpplib/include/utils/thread.hpp"
+#include "quickcpplib/algorithm/string.hpp"
+#include "quickcpplib/utils/thread.hpp"
 
 #include <fstream>
 #include <mutex>

@@ -36,7 +36,7 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 
 
-#include "quickcpplib/include/cpp_feature.h"
+#include "quickcpplib/cpp_feature.h"
 
 #ifndef __cpp_exceptions
 #error KernelTest needs C++ exceptions to be turned on
@@ -58,7 +58,7 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 #endif
 
-#include "quickcpplib/include/import.h"
+#include "quickcpplib/import.h"
 
 #if defined(KERNELTEST_UNSTABLE_VERSION)
 #include "../revision.hpp"
@@ -83,14 +83,14 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 
 // Bring in the Boost-lite macros
-#include "quickcpplib/include/config.hpp"
+#include "quickcpplib/config.hpp"
 // Bring in scoped undo
-#include "quickcpplib/include/scoped_undo.hpp"
+#include "quickcpplib/scoped_undo.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 using QUICKCPPLIB_NAMESPACE::scoped_undo::undoer;
 KERNELTEST_V1_NAMESPACE_END
 // Bring in an optional implementation
-#include "quickcpplib/include/optional.hpp"
+#include "quickcpplib/optional.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 using namespace QUICKCPPLIB_NAMESPACE::optional;
 KERNELTEST_V1_NAMESPACE_END
@@ -157,9 +157,10 @@ function exported from the KernelTest DLL if not building headers only.
 
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-#include "outcome/include/outcome/experimental/status_outcome.hpp"
-#include "outcome/include/outcome/iostream_support.hpp"
-#include "outcome/include/outcome/experimental/status-code/include/system_code_from_exception.hpp"
+#include "outcome/experimental/status_outcome.hpp"
+#include "outcome/iostream_support.hpp"
+#include "outcome/experimental/status-code/include/system_code_from_exception.hpp"
+#include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S>;
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr> using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
@@ -168,7 +169,8 @@ using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
 KERNELTEST_V1_NAMESPACE_END
 #else
-#include "outcome/include/outcome.hpp"
+#include "outcome/outcome.hpp"
+#include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 using OUTCOME_V2_NAMESPACE::result;
 using OUTCOME_V2_NAMESPACE::outcome;
