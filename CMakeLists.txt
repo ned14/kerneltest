@@ -17,11 +17,20 @@ if(NOT PROJECT_IS_DEPENDENCY)
   UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/revision.hpp")
 endif()
 # Find my library dependencies
-find_quickcpplib_library(quickcpplib 1.0 REQUIRED)
-find_quickcpplib_library(outcome 2.0 REQUIRED)
+find_quickcpplib_library(quickcpplib
+  GIT_REPOSITORY "https://github.com/ned14/quickcpplib.git"
+  REQUIRED
+)
+find_quickcpplib_library(outcome
+  GIT_REPOSITORY "https://github.com/ned14/outcome.git"
+  REQUIRED
+)
 
 # Make an interface only library so dependent CMakeLists can bring in this header-only library
 include(QuickCppLibMakeHeaderOnlyLibrary)
+
+# If we have concepts, enable those for both myself and all inclusions
+apply_cxx_concepts_to(INTERFACE kerneltest_hl)
 
 # Create a custom doxygen generation target
 include(QuickCppLibMakeDoxygen)
@@ -64,10 +73,6 @@ if(NOT CXX_HAS_AGGREGATE_INITIALIZABLE_TUPLE)
       target_compile_features(kerneltest_hl INTERFACE cxx_std_17)
     endif()
   endforeach()
-endif()
-# If Concepts are available, use them
-if(ENABLE_CXX_CONCEPTS)
-  target_compile_options(kerneltest_hl INTERFACE -fconcepts)
 endif()
 
 # Set the library dependencies this library has
