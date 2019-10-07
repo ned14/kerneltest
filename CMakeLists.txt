@@ -17,10 +17,16 @@ if(NOT PROJECT_IS_DEPENDENCY)
   UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/revision.hpp")
 endif()
 # Find my library dependencies
+find_quickcpplib_library(quickcpplib
+  GIT_REPOSITORY "https://github.com/ned14/quickcpplib.git"
+  REQUIRED
+  IS_HEADER_ONLY
+)
 find_quickcpplib_library(outcome
   GIT_REPOSITORY "https://github.com/ned14/outcome.git"
   GIT_TAG "develop"
   REQUIRED
+  IS_HEADER_ONLY
 )
 
 # Make an interface only library so dependent CMakeLists can bring in this header-only library
