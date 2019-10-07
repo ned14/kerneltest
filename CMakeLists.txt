@@ -19,6 +19,7 @@ endif()
 # Find my library dependencies
 find_quickcpplib_library(outcome
   GIT_REPOSITORY "https://github.com/ned14/outcome.git"
+  GIT_TAG "develop"
   REQUIRED
 )
 
