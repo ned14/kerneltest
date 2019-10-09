@@ -81,6 +81,13 @@ namespace hooks
       inst(const inst &) = delete;
       inst(inst &&) noexcept = default;
 
+      template <class X, class Y, class Z>
+      constexpr inst(X &&_onbegin, Y &&_onfinish, Z &&_desc)
+          : onbegin(std::forward<X>(_onbegin))
+          , onfinish(std::forward<Y>(_onfinish))
+          , description(std::forward<Z>(_desc))
+      {
+      }
       // Called at the beginning of an individual test. Returns object destroyed at the end of an individual test.
       template <class Parent, class RetType, class... Args> auto operator()(Parent *parent, RetType &testret, size_t idx, Args &&... args) const
       {
