@@ -116,7 +116,6 @@ KERNELTEST_V1_NAMESPACE_BEGIN
 namespace filesystem = std::filesystem;
 KERNELTEST_V1_NAMESPACE_END
 #endif
-#endif
 // clang-format on
 #elif defined(_MSC_VER)
 #include <filesystem>
@@ -451,7 +450,11 @@ namespace win32
   // Used to retrieve the current Win32 error code
   extern DWORD __stdcall GetLastError();
 #pragma comment(lib, "kernel32.lib")
+#ifdef KERNELTEST_UNSTABLE_VERSION
 #define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1_" #x "@@YAKXZ=GetLastError"
+#else
+#define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1@@YAKXZ=GetLastError"
+#endif
 #define KERNELTEST_GETLASTERROR_SYMBOL1(x) KERNELTEST_GETLASTERROR_SYMBOL2(x)
 #define KERNELTEST_GETLASTERROR_SYMBOL KERNELTEST_GETLASTERROR_SYMBOL1(KERNELTEST_PREVIOUS_COMMIT_UNIQUE)
 #pragma comment(linker, KERNELTEST_GETLASTERROR_SYMBOL)
