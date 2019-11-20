@@ -65,6 +65,17 @@ namespace detail
   template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
 
   template <class ParamSequence, class Callable> struct result_of_parameter_permute;
+#if defined(_MSC_VER) && _MSC_VER == 1923  // needs help
+  template <class ParamSequence, class Callable> struct msvc_result_of_parameter_permute;
+  template <class... Types, class Callable> struct msvc_result_of_parameter_permute<parameters<Types...>, Callable>
+  {
+    using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
+  };
+  template <class OutcomeType, class Innards, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, Innards, Excess...>, Callable>
+  {
+    using type = typename msvc_result_of_parameter_permute<Innards, Callable>::type;
+  };
+#endif
   template <class OutcomeType, class... Types, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, parameters<Types...>, Excess...>, Callable>
   {
     using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
@@ -203,7 +214,7 @@ namespace detail
       return a.error() == b.error();
     return false;
   }
-}
+}  // namespace detail
 
 /*! \brief A parameter permuter instance
 \tparam is_mt True if this is a multithreaded parameter permuter
@@ -430,7 +441,7 @@ namespace detail
   {
   };
   template <class T, size_t N, size_t... Idxs> auto array_from_Carray(const T (&seq)[N], std::index_sequence<Idxs...>) { return std::array<T, N>{{seq[Idxs]...}}; }
-}
+}  // namespace detail
 
 /*! \brief Create a single threaded parameter permuter
 \tparam OutcomeType An outcome<T>, result<T> or option<T> for the outcome of the test kernel
@@ -585,7 +596,7 @@ namespace detail
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-}
+}  // namespace detail
 //! Colourfully prints a failed result
 template <class Permuter, class U> detail::pretty_print_failure_impl<Permuter, U> pretty_print_failure(const Permuter &s, U &&f)
 {
@@ -622,14 +633,13 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 }
 
 /*! If expr is false, sets testreturn to an error_code_extended of `kerneltest_errc::check_failed` with an extended message of the expr which failed
-*/
+ */
 #define KERNELTEST_CHECK(testreturn, expr)                                                                                                                                                                                                                                                                                     \
   if(!(expr))                                                                                                                                                                                                                                                                                                                  \
   {                                                                                                                                                                                                                                                                                                                            \
-    \
-(testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                        \
-  \
-}
+                                                                                                                                                                                                                                                                                                                               \
+    (testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                    \
+  }
 
 
 KERNELTEST_V1_NAMESPACE_END
