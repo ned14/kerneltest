@@ -65,7 +65,7 @@ namespace detail
   template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
 
   template <class ParamSequence, class Callable> struct result_of_parameter_permute;
-#if defined(_MSC_VER) && _MSC_VER == 1923  // needs help
+#if defined(_MSC_VER) && (_MSC_VER == 1923 || _MSC_VER == 1924)  // needs help
   template <class ParamSequence, class Callable> struct msvc_result_of_parameter_permute;
   template <class... Types, class Callable> struct msvc_result_of_parameter_permute<parameters<Types...>, Callable>
   {
