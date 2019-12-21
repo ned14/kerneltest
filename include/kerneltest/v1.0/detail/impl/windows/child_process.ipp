@@ -72,9 +72,9 @@ namespace child_process
     child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
     native_handle_type childreadh, childwriteh, childerrh;
 
-    STARTUPINFO si;
+    STARTUPINFOW si;
     memset(&si, 0, sizeof(si));
-    si.cb = sizeof(STARTUPINFO);
+    si.cb = sizeof(STARTUPINFOW);
     si.dwFlags = STARTF_USESTDHANDLES;
     if(!CreatePipe(&childreadh.h, &ret._readh.h, nullptr, 0))
       return win32_error();
@@ -161,7 +161,7 @@ namespace child_process
       envbuffere += env.second.size() + 1;
     }
     *envbuffere = 0;
-    if(!CreateProcess(ret._path.c_str(), argsbuffer, nullptr, nullptr, true, CREATE_UNICODE_ENVIRONMENT, envbuffer, nullptr, &si, &pi))
+    if(!CreateProcessW(ret._path.c_str(), argsbuffer, nullptr, nullptr, true, CREATE_UNICODE_ENVIRONMENT, envbuffer, nullptr, &si, &pi))
       return win32_error();
     ret._processh.h = pi.hProcess;
     unmypipes.dismiss();
@@ -205,7 +205,7 @@ namespace child_process
   filesystem::path current_process_path()
   {
     filesystem::path::string_type buffer(32768, 0);
-    DWORD len = GetModuleFileName(nullptr, const_cast<filesystem::path::string_type::value_type *>(buffer.data()), (DWORD) buffer.size());
+    DWORD len = GetModuleFileNameW(nullptr, const_cast<filesystem::path::string_type::value_type *>(buffer.data()), (DWORD) buffer.size());
     if(!len)
       throw std::system_error(GetLastError(), std::system_category());
     buffer.resize(len);
@@ -216,8 +216,8 @@ namespace child_process
   {
     using string_type = filesystem::path::string_type;
     std::map<string_type, string_type> ret;
-    string_type::value_type *strings = GetEnvironmentStrings();
-    auto unstrings = undoer([strings] { FreeEnvironmentStrings(strings); });
+    string_type::value_type *strings = GetEnvironmentStringsW();
+    auto unstrings = undoer([strings] { FreeEnvironmentStringsW(strings); });
     for(auto *s = strings, *e = strings; *s; s = (e = e + 1))
     {
       auto *c = s;
