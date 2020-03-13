@@ -208,7 +208,7 @@ namespace child_process
     // Wait until the primary thread has launched
     ::usleep(30 * 1000);
 
-    return std::move(ret);
+    return result<child_process>(std::move(ret));
   }
 
   bool child_process::is_running() const noexcept

@@ -102,7 +102,9 @@ KERNELTEST_V1_NAMESPACE_END
 KERNELTEST_V1_NAMESPACE_BEGIN
 namespace filesystem = std::filesystem;
 KERNELTEST_V1_NAMESPACE_END
-#elif __has_include(<experimental/filesystem>) && (!defined(_MSC_VER) || _MSC_VER < 1923)  // C++ 14 filesystem support was dropped in VS2019 16.3
+// C++ 14 filesystem support was dropped in VS2019 16.3
+// C++ 14 filesystem support was dropped in LLVM 11
+#elif __has_include(<experimental/filesystem>) && (!defined(_MSC_VER) || _MSC_VER < 1923) && (!defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 11000)  
 #include <experimental/filesystem>
 KERNELTEST_V1_NAMESPACE_BEGIN
 namespace filesystem = std::experimental::filesystem;
@@ -110,6 +112,9 @@ KERNELTEST_V1_NAMESPACE_END
 #elif __has_include(<filesystem>)
 #if defined(_MSC_VER) && _MSC_VER >= 1923
 #error MSVC dropped support for C++ 14 <filesystem> from VS2019 16.3 onwards. Please enable C++ 17 or later.
+#endif
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 11000
+#error libc++ dropped support for C++ 14 <filesystem> from LLVM 11 onwards. Please enable C++ 17 or later.
 #endif
 #include <filesystem>
 KERNELTEST_V1_NAMESPACE_BEGIN
