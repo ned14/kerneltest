@@ -455,10 +455,18 @@ namespace win32
   // Used to retrieve the current Win32 error code
   extern DWORD __stdcall GetLastError();
 #pragma comment(lib, "kernel32.lib")
+#if defined(_WIN64)
 #ifdef KERNELTEST_UNSTABLE_VERSION
 #define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1_" #x "@@YAKXZ=GetLastError"
 #else
 #define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1@@YAKXZ=GetLastError"
+#endif
+#else
+#ifdef KERNELTEST_UNSTABLE_VERSION
+#define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1_" #x "@@YGKXZ=__imp__GetLastError@0"
+#else
+#define KERNELTEST_GETLASTERROR_SYMBOL2(x) "/alternatename:?GetLastError@win32@kerneltest_v1@@YGKXZ=__imp__GetLastError@0"
+#endif
 #endif
 #define KERNELTEST_GETLASTERROR_SYMBOL1(x) KERNELTEST_GETLASTERROR_SYMBOL2(x)
 #define KERNELTEST_GETLASTERROR_SYMBOL KERNELTEST_GETLASTERROR_SYMBOL1(KERNELTEST_PREVIOUS_COMMIT_UNIQUE)
