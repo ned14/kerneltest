@@ -104,7 +104,7 @@ namespace child_process
         return win32_error();
     }
 
-    auto unmypipes = undoer([&] {
+    auto unmypipes = make_scope_exit([&]() noexcept {
       CloseHandle(ret._readh.h);
       ret._readh.h = nullptr;
       CloseHandle(ret._writeh.h);
@@ -115,7 +115,7 @@ namespace child_process
         ret._errh.h = nullptr;
       }
     });
-    auto unhispipes = undoer([&] {
+    auto unhispipes = make_scope_exit([&]() noexcept {
       CloseHandle(childreadh.h);
       CloseHandle(childwriteh.h);
       if(!use_parent_errh)
@@ -164,7 +164,7 @@ namespace child_process
     if(!CreateProcessW(ret._path.c_str(), argsbuffer, nullptr, nullptr, true, CREATE_UNICODE_ENVIRONMENT, envbuffer, nullptr, &si, &pi))
       return win32_error();
     ret._processh.h = pi.hProcess;
-    unmypipes.dismiss();
+    unmypipes.release();
 
     // Wait until the primary thread has launched
     Sleep(30);
@@ -217,7 +217,7 @@ namespace child_process
     using string_type = filesystem::path::string_type;
     std::map<string_type, string_type> ret;
     string_type::value_type *strings = GetEnvironmentStringsW();
-    auto unstrings = undoer([strings] { FreeEnvironmentStringsW(strings); });
+    auto unstrings = make_scope_exit([strings]() noexcept { FreeEnvironmentStringsW(strings); });
     for(auto *s = strings, *e = strings; *s; s = (e = e + 1))
     {
       auto *c = s;

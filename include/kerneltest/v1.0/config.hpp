@@ -84,10 +84,12 @@ Distributed under the Boost Software License, Version 1.0.
 
 // Bring in the Boost-lite macros
 #include "quickcpplib/config.hpp"
-// Bring in scoped undo
-#include "quickcpplib/scoped_undo.hpp"
+// Bring in a scope implementation
+#include "quickcpplib/scope.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
-using QUICKCPPLIB_NAMESPACE::scoped_undo::undoer;
+using QUICKCPPLIB_NAMESPACE::scope::make_scope_exit;
+using QUICKCPPLIB_NAMESPACE::scope::make_scope_fail;
+using QUICKCPPLIB_NAMESPACE::scope::make_scope_success;
 KERNELTEST_V1_NAMESPACE_END
 // Bring in an optional implementation
 #include "quickcpplib/optional.hpp"

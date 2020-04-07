@@ -99,7 +99,7 @@ namespace child_process
       childerrh.fd = temp[1];
     }
 
-    auto unmypipes = undoer([&] {
+    auto unmypipes = make_scope_exit([&]() noexcept {
       ::close(ret._readh.fd);
       ret._readh.fd = -1;
       ::close(ret._writeh.fd);
@@ -110,7 +110,7 @@ namespace child_process
         ret._errh.fd = -1;
       }
     });
-    auto unhispipes = undoer([&] {
+    auto unhispipes = make_scope_exit([&]() noexcept {
       ::close(childreadh.fd);
       ::close(childwriteh.fd);
       if(!use_parent_errh)
@@ -201,9 +201,9 @@ namespace child_process
     err = ::posix_spawn(&ret._processh.pid, ret._path.c_str(), &child_fd_actions, nullptr, (char **) argptrs.data(), (char **) envptrs.data());
     if(err)
       return posix_error(err);
-    auto unfdactions = undoer([&] { ::posix_spawn_file_actions_destroy(&child_fd_actions); });
+    auto unfdactions = make_scope_exit([&]() noexcept { ::posix_spawn_file_actions_destroy(&child_fd_actions); });
 #endif
-    unmypipes.dismiss();
+    unmypipes.release();
 
     // Wait until the primary thread has launched
     ::usleep(30 * 1000);
