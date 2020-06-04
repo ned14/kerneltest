@@ -246,7 +246,7 @@ namespace child_process
     do
     {
       // If timeout is not set, this will block forever
-      OUTCOME_TRY(running, check_child());
+      OUTCOME_TRY(auto &&running, check_child());
       if(!running)
         return ret;
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
