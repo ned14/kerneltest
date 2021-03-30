@@ -34,8 +34,10 @@
 
 // If C++ Modules are on and we are not compiling the library,
 // we are either generating the interface or importing
-#if defined(__cpp_modules)
-#if defined(GENERATING_CXX_MODULE_INTERFACE)
+#if !defined(__cpp_modules) || defined(GENERATING_KERNELTEST_MODULE_INTERFACE) || KERNELTEST_DISABLE_CXX_MODULES
+// C++ Modules not on, therefore include as usual
+#define KERNELTEST_INCLUDE_ALL
+#elif defined(GENERATING_KERNELTEST_MODULE_INTERFACE)
 // We are generating this module's interface
 #define QUICKCPPLIB_HEADERS_ONLY 0
 #define KERNELTEST_HEADERS_ONLY 0
@@ -47,10 +49,6 @@
 // We are importing this module
 import KERNELTEST_MODULE_NAME;
 #undef KERNELTEST_INCLUDE_ALL
-#endif
-#else
-// C++ Modules not on, therefore include as usual
-#define KERNELTEST_INCLUDE_ALL
 #endif
 
 #ifdef KERNELTEST_INCLUDE_ALL
