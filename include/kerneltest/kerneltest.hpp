@@ -1,7 +1,7 @@
 //! \file kerneltest/kerneltest.hpp The master *latest version* KernelTest include file. All KernelTest consuming libraries should include this header only.
 #include "version.hpp"
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER) && !defined(__clang__) && (!defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL)
 #define KERNELTEST_HEADERS_PATH2 KERNELTEST_VERSION_GLUE(v, KERNELTEST_HEADERS_VERSION, /kerneltest.hpp)
 #else
 #define KERNELTEST_HEADERS_PATH2 KERNELTEST_VERSION_GLUE(v, KERNELTEST_HEADERS_VERSION,)/kerneltest.hpp

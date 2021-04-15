@@ -25,10 +25,10 @@
 #if defined(__cpp_modules) || defined(DOXYGEN_SHOULD_SKIP_THIS)
 #if defined(_MSC_VER) && !defined(__clang__)
 //! \brief The KernelTest C++ module name
-#define KERNELTEST_MODULE_NAME KERNELTEST_VERSION_GLUE(afio_v, KERNELTEST_NAMESPACE_VERSION, )
+#define KERNELTEST_MODULE_NAME KERNELTEST_VERSION_GLUE(kerneltest_v, KERNELTEST_NAMESPACE_VERSION, )
 #else
 //! \brief The KernelTest C++ module name
-#define KERNELTEST_MODULE_NAME KERNELTEST_VERSION_GLUE(afio_v, KERNELTEST_NAMESPACE_VERSION, )
+#define KERNELTEST_MODULE_NAME KERNELTEST_VERSION_GLUE(kerneltest_v, KERNELTEST_NAMESPACE_VERSION, )
 #endif
 #endif
 
