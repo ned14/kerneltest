@@ -34,7 +34,7 @@
 
 // If C++ Modules are on and we are not compiling the library,
 // we are either generating the interface or importing
-#if !defined(__cpp_modules) || defined(GENERATING_KERNELTEST_MODULE_INTERFACE) || KERNELTEST_DISABLE_CXX_MODULES
+#if !KERNELTEST_ENABLE_CXX_MODULES || !defined(__cpp_modules) || defined(GENERATING_KERNELTEST_MODULE_INTERFACE) || KERNELTEST_DISABLE_CXX_MODULES
 // C++ Modules not on, therefore include as usual
 #define KERNELTEST_INCLUDE_ALL
 #elif defined(GENERATING_KERNELTEST_MODULE_INTERFACE)
