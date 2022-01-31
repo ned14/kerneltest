@@ -69,8 +69,8 @@ Distributed under the Boost Software License, Version 1.0.
 
 #if DOXYGEN_SHOULD_SKIP_THIS
 #define KERNELTEST_V1_NAMESPACE kerneltest_v1_xxx
-#define KERNELTEST_V1_NAMESPACE_BEGIN                                                                                                                                                                                                                                                                                          \
-  namespace kerneltest_v1_xxx                                                                                                                                                                                                                                                                                                  \
+#define KERNELTEST_V1_NAMESPACE_BEGIN                                                                                                                          \
+  namespace kerneltest_v1_xxx                                                                                                                                  \
   {
 
 #define KERNELTEST_V1_NAMESPACE_END }
@@ -172,27 +172,27 @@ function exported from the KernelTest DLL if not building headers only.
 
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-#include "outcome/experimental/status_outcome.hpp"
-#include "outcome/iostream_support.hpp"
 #include "outcome/experimental/status-code/include/system_code_from_exception.hpp"
+#include "outcome/experimental/status_outcome.hpp"
 #include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S>;
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr> using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
-using OUTCOME_V2_NAMESPACE::success;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr>
+using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
+using OUTCOME_V2_NAMESPACE::success;
 KERNELTEST_V1_NAMESPACE_END
 #else
-#include "outcome/outcome.hpp"
 #include "outcome/iostream_support.hpp"
+#include "outcome/outcome.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
-using OUTCOME_V2_NAMESPACE::result;
-using OUTCOME_V2_NAMESPACE::outcome;
-using OUTCOME_V2_NAMESPACE::success;
+using OUTCOME_V2_NAMESPACE::error_from_exception;
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
-using OUTCOME_V2_NAMESPACE::error_from_exception;
+using OUTCOME_V2_NAMESPACE::outcome;
+using OUTCOME_V2_NAMESPACE::result;
+using OUTCOME_V2_NAMESPACE::success;
 KERNELTEST_V1_NAMESPACE_END
 #endif
 
@@ -313,12 +313,12 @@ namespace detail
       return "unknown";
     }
   }
-}
+}  // namespace detail
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
 class _kerneltest_domain;
 using kerneltest_code = SYSTEM_ERROR2_NAMESPACE::status_code<_kerneltest_domain>;
-class _kerneltest_domain : public SYSTEM_ERROR2_NAMESPACE::status_code_domain
+class _kerneltest_domain final : public SYSTEM_ERROR2_NAMESPACE::status_code_domain
 {
   template <class DomainType> friend class SYSTEM_ERROR2_NAMESPACE::status_code;
   using _base = SYSTEM_ERROR2_NAMESPACE::status_code_domain;
@@ -334,13 +334,20 @@ public:
   static inline constexpr const _kerneltest_domain &get();
 
   virtual string_ref name() const noexcept override final { return string_ref("kerneltest domain"); }  // NOLINT
+  virtual payload_info_t payload_info() const noexcept override
+  {
+    return {sizeof(value_type), sizeof(status_code_domain *) + sizeof(value_type),
+            (alignof(value_type) > alignof(status_code_domain *)) ? alignof(value_type) : alignof(status_code_domain *)};
+  }
+
 protected:
   virtual bool _do_failure(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code) const noexcept override
   {
     assert(code.domain() == *this);
     return static_cast<const kerneltest_code &>(code).value() != kerneltest_errc::success;  // NOLINT
   }
-  virtual bool _do_equivalent(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code1, const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code2) const noexcept override
+  virtual bool _do_equivalent(const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code1,
+                              const SYSTEM_ERROR2_NAMESPACE::status_code<void> &code2) const noexcept override
   {
     assert(code1.domain() == *this);
     const auto &c1 = static_cast<const kerneltest_code &>(code1);  // NOLINT
@@ -399,7 +406,9 @@ inline SYSTEM_ERROR2_NAMESPACE::system_code win32_error(SYSTEM_ERROR2_NAMESPACE:
 }
 #endif
 
-inline SYSTEM_ERROR2_NAMESPACE::system_code error_from_exception(std::exception_ptr &&ep = std::current_exception(), SYSTEM_ERROR2_NAMESPACE::system_code not_matched = SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::resource_unavailable_try_again)) noexcept
+inline SYSTEM_ERROR2_NAMESPACE::system_code error_from_exception(std::exception_ptr &&ep = std::current_exception(),
+                                                                 SYSTEM_ERROR2_NAMESPACE::system_code not_matched = SYSTEM_ERROR2_NAMESPACE::generic_code(
+                                                                 SYSTEM_ERROR2_NAMESPACE::errc::resource_unavailable_try_again)) noexcept
 {
   return SYSTEM_ERROR2_NAMESPACE::system_code_from_exception(std::move(ep), std::move(not_matched));
 }
@@ -413,7 +422,7 @@ namespace detail
     virtual const char *name() const noexcept { return "kerneltest"; }
     virtual std::string message(int c) const { return detail::message(static_cast<kerneltest_errc>(c)); }
   };
-}
+}  // namespace detail
 
 /*! \brief Returns a reference to a kerneltest error category. Note the address
 of one of these may not be constant throughout the process as per the ISO spec.
