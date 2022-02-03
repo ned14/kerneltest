@@ -1,5 +1,5 @@
 /* KernelTest config
-(C) 2016-2017 Niall Douglas <http://www.nedproductions.biz/> (7 commits)
+(C) 2016-2022 Niall Douglas <http://www.nedproductions.biz/> (7 commits)
 File Created: Apr 2016
 
 
@@ -330,6 +330,7 @@ public:
   }
   using value_type = kerneltest_errc;
   using string_ref = _base::string_ref;
+  using payload_info_t = _base::payload_info_t;
 
   static inline constexpr const _kerneltest_domain &get();
 
