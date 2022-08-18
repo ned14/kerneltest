@@ -172,7 +172,11 @@ function exported from the KernelTest DLL if not building headers only.
 
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-#include "outcome/experimental/status-code/include/system_code_from_exception.hpp"
+#if !OUTCOME_USE_SYSTEM_STATUS_CODE && __has_include("outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp")
+#include "outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp"
+#else
+#include <status-code/system_code_from_exception.hpp>
+#endif
 #include "outcome/experimental/status_outcome.hpp"
 #include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
