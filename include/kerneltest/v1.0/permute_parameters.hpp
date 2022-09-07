@@ -292,9 +292,8 @@ public:
   */
   template <class U> auto operator()(U &&f) const
   {
+    // The return type of the kernel callable
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
-    using return_type_as_if_void = typename return_type::template rebind<void>;
-    static_assert(!std::is_void<typename outcome_type::value_type>::value ? (std::is_constructible<outcome_type, return_type>::value) : (std::is_constructible<outcome_type, return_type_as_if_void>::value), "Return type of callable is not compatible with the parameter outcome type");
     permutation_results_type<return_type> results(detail::make_permutation_results_type<permutation_results_type<return_type>>(_params.size()));
     permutation_results_type<const parameter_sequence_value_type *> params(detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
     {
