@@ -12,7 +12,7 @@ project(kerneltest VERSION ${VERSIONSTRING} LANGUAGES C CXX)
 set(PROJECT_NAMESPACE)
 # Setup this cmake environment for this project
 include(QuickCppLibSetupProject)
-if(NOT PROJECT_IS_DEPENDENCY)
+if(NOT kerneltest_IS_DEPENDENCY)
   # This file should be updated with the last git SHA next commit
   UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/revision.hpp")
 endif()
