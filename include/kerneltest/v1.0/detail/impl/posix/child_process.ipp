@@ -41,6 +41,9 @@ extern "C" char **environ;
 #include <mach-o/dyld.h>  // for _NSGetExecutablePath
 extern "C" char **environ;
 #endif
+#ifdef __ANDROID__
+extern "C" char **environ;
+#endif
 
 KERNELTEST_V1_NAMESPACE_BEGIN
 
@@ -72,7 +75,9 @@ namespace child_process
     }
   }
 
-  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args, std::map<filesystem::path::string_type, filesystem::path::string_type> __env, bool use_parent_errh) noexcept
+  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args,
+                                                                                   std::map<filesystem::path::string_type, filesystem::path::string_type> __env,
+                                                                                   bool use_parent_errh) noexcept
   {
     child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
     native_handle_type childreadh, childwriteh, childerrh;
@@ -99,7 +104,9 @@ namespace child_process
       childerrh.fd = temp[1];
     }
 
-    auto unmypipes = make_scope_exit([&]() noexcept {
+    auto unmypipes = make_scope_exit(
+    [&]() noexcept
+    {
       ::close(ret._readh.fd);
       ret._readh.fd = -1;
       ::close(ret._writeh.fd);
@@ -110,7 +117,9 @@ namespace child_process
         ret._errh.fd = -1;
       }
     });
-    auto unhispipes = make_scope_exit([&]() noexcept {
+    auto unhispipes = make_scope_exit(
+    [&]() noexcept
+    {
       ::close(childreadh.fd);
       ::close(childwriteh.fd);
       if(!use_parent_errh)
@@ -227,7 +236,8 @@ namespace child_process
     if(!_processh)
       return errc::no_child_process;
     intptr_t ret = 0;
-    auto check_child = [&]() -> result<bool> {
+    auto check_child = [&]() -> result<bool>
+    {
       siginfo_t info;
       memset(&info, 0, sizeof(info));
       int options = WEXITED | WSTOPPED;
@@ -323,7 +333,7 @@ namespace child_process
 
   std::map<filesystem::path::string_type, filesystem::path::string_type> current_process_env()
   {
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     char **environ = __environ;
 #endif
     std::map<filesystem::path::string_type, filesystem::path::string_type> ret;
@@ -337,6 +347,6 @@ namespace child_process
     }
     return ret;
   }
-}
+}  // namespace child_process
 
 KERNELTEST_V1_NAMESPACE_END
