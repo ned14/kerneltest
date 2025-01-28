@@ -38,9 +38,6 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "quickcpplib/cpp_feature.h"
 
-#ifndef __cpp_exceptions
-#error KernelTest needs C++ exceptions to be turned on
-#endif
 #ifndef __cpp_alias_templates
 #error KernelTest needs template alias support in the compiler
 #endif
@@ -170,6 +167,46 @@ function exported from the KernelTest DLL if not building headers only.
 #define KERNELTEST_HEADERS_ONLY_VIRTUAL_SPEC virtual
 #endif
 
+#ifndef KERNELTEST_EXCEPTION_TRY
+#ifndef __cpp_exceptions
+#define KERNELTEST_EXCEPTION_TRY if(true)
+#else
+#define KERNELTEST_EXCEPTION_TRY try
+#endif
+#endif
+#ifndef KERNELTEST_EXCEPTION_CATCH
+#ifndef __cpp_exceptions
+#define KERNELTEST_EXCEPTION_CATCH(init, ...) else if(__VA_ARGS__ = init; false)
+#else
+#define KERNELTEST_EXCEPTION_CATCH(init, ...) catch(__VA_ARGS__)
+#endif
+#endif
+#ifndef KERNELTEST_EXCEPTION_CATCH_ALL
+#ifndef __cpp_exceptions
+#define KERNELTEST_EXCEPTION_CATCH_ALL else if(false)
+#else
+#define KERNELTEST_EXCEPTION_CATCH_ALL catch(...)
+#endif
+#endif
+#ifndef KERNELTEST_EXCEPTION_THROW
+#ifndef __cpp_exceptions
+#define KERNELTEST_EXCEPTION_THROW(...)                                                                                                                        \
+  {                                                                                                                                                            \
+    fprintf(stderr, "FATAL: throw " #__VA_ARGS__ " at " __FILE__ ":%d\n", __LINE__);                                                                           \
+    abort();                                                                                                                                                   \
+  }
+#else
+#define KERNELTEST_EXCEPTION_THROW(...) throw(__VA_ARGS__)
+#endif
+#endif
+#ifndef KERNELTEST_EXCEPTION_RETHROW
+#ifndef __cpp_exceptions
+#define KERNELTEST_EXCEPTION_RETHROW
+#else
+#define KERNELTEST_EXCEPTION_RETHROW throw
+#endif
+#endif
+
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
 #if !OUTCOME_USE_SYSTEM_STATUS_CODE && __has_include("outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp")
@@ -180,9 +217,16 @@ function exported from the KernelTest DLL if not building headers only.
 #include "outcome/experimental/status_outcome.hpp"
 #include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
+#ifdef __cpp_exceptions
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S>;
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr>
 using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
+#else
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code>
+using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S, OUTCOME_V2_NAMESPACE::policy::terminate>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr>
+using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P, OUTCOME_V2_NAMESPACE::policy::terminate>;
+#endif
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
 using OUTCOME_V2_NAMESPACE::success;
@@ -191,11 +235,25 @@ KERNELTEST_V1_NAMESPACE_END
 #include "outcome/iostream_support.hpp"
 #include "outcome/outcome.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
+#ifdef __cpp_exceptions
 using OUTCOME_V2_NAMESPACE::error_from_exception;
+#else
+inline std::error_code error_from_exception(std::exception_ptr && = std::current_exception(),
+                                            std::error_code = std::make_error_code(std::errc::resource_unavailable_try_again)) noexcept
+{
+  abort();  // should never be called
+}
+#endif
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
+#ifdef __cpp_exceptions
 using OUTCOME_V2_NAMESPACE::outcome;
 using OUTCOME_V2_NAMESPACE::result;
+#else
+template <class R, class S = std::error_code, class P = std::exception_ptr>
+using outcome = OUTCOME_V2_NAMESPACE::outcome<R, S, P, OUTCOME_V2_NAMESPACE::policy::terminate>;
+template <class R, class S = std::error_code> using result = OUTCOME_V2_NAMESPACE::result<R, S, OUTCOME_V2_NAMESPACE::policy::terminate>;
+#endif
 using OUTCOME_V2_NAMESPACE::success;
 KERNELTEST_V1_NAMESPACE_END
 #endif

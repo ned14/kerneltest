@@ -90,7 +90,7 @@ namespace hooks
     */
     template <bool is_throwing = false> inline filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
     {
-      try
+      KERNELTEST_EXCEPTION_TRY
       {
         static std::string product;
         auto ret = override_library_directory();
@@ -158,7 +158,7 @@ namespace hooks
           std::terminate();
         }
       }
-      catch(...)
+      KERNELTEST_EXCEPTION_CATCH_ALL
       {
         if(!is_throwing)
         {
@@ -180,7 +180,7 @@ namespace hooks
     */
     template <bool is_throwing = false> inline filesystem::path workspace_template_path(const filesystem::path &workspace)  // noexcept(!is_throwing)
     {
-      try
+      KERNELTEST_EXCEPTION_TRY
       {
         filesystem::path library_dir = library_directory();
         if(filesystem::exists(library_dir / "test" / "tests" / workspace))
@@ -201,7 +201,7 @@ namespace hooks
           std::terminate();
         }
       }
-      catch(...)
+      KERNELTEST_EXCEPTION_CATCH_ALL
       {
         if(!is_throwing)
         {
@@ -442,7 +442,7 @@ namespace hooks
     */
     template <bool compare_contents, bool compare_timestamps> optional<result<filesystem::path>> compare_directories(filesystem::path before, filesystem::path after) noexcept
     {
-      try
+      KERNELTEST_EXCEPTION_TRY
       {
         // Make list of everything in after
         std::unordered_map<filesystem::path, filesystem::directory_entry, path_hasher> after_items;
@@ -453,7 +453,7 @@ namespace hooks
 
         // We need to remove each item as we check, if anything remains we fail
         optional<result<filesystem::path>> ret = depth_first_walk(before, [&](filesystem::directory_entry dirent) -> optional<result<filesystem::path>> {
-          try
+          KERNELTEST_EXCEPTION_TRY
           {
             filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
             filesystem::path afterpath(after / leafpath);
@@ -582,7 +582,7 @@ namespace hooks
           differs:
             return {success(leafpath)};
           }
-          catch(...)
+          KERNELTEST_EXCEPTION_CATCH_ALL
           {
             return {error_from_exception()};
           }
@@ -611,7 +611,7 @@ namespace hooks
         // Otherwise both current and after are identical
         return {};
       }
-      catch(...)
+      KERNELTEST_EXCEPTION_CATCH_ALL
       {
         return {error_from_exception()};
       }

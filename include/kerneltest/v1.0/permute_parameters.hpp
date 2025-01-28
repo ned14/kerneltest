@@ -306,7 +306,7 @@ public:
       auto nested_f = [&](size_t idx) {
         using callable_parameters_type = parameter_type<0>;
         const callable_parameters_type &p = parameter_value<0>(**params[idx]);
-        try
+        KERNELTEST_EXCEPTION_TRY
         {
           // Instantiate the hooks
           auto hooks(detail::instantiate_hooks(_hooks, this, results[idx], idx, **params[idx], std::make_index_sequence<sizeof...(Hooks)>()));
@@ -316,33 +316,33 @@ public:
           results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
           stage = 2;
         }
-        catch(...)
+        KERNELTEST_EXCEPTION_CATCH_ALL
         {
           kerneltest_errc code = kerneltest_errc::setup_exception_thrown;
           if(1 == stage)
             code = kerneltest_errc::kernel_exception_thrown;
           else if(2 == stage)
             code = kerneltest_errc::teardown_exception_thrown;
-          try
+          KERNELTEST_EXCEPTION_TRY
           {
             throw;
           }
-          catch(const std::exception &e)
+          KERNELTEST_EXCEPTION_CATCH({}, const std::exception &e)
           {
             KERNELTEST_CERR("WARNING: C++ exception thrown '" << e.what() << "'" << std::endl);
           }
-          catch(...)
+          KERNELTEST_EXCEPTION_CATCH_ALL
           {
           }
 #if 1
           results[idx] = return_type(in_place_type<typename return_type::error_type>, make_error_code(code));
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
 #else
-          try
+          KERNELTEST_EXCEPTION_TRY
           {
             std::throw_with_nested(std::system_error(make_error_code(code)));
           }
-          catch(...)
+          KERNELTEST_EXCEPTION_CATCH_ALL
           {
             results[idx].set_exception(std::current_exception());
           }
