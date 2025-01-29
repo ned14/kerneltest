@@ -88,7 +88,8 @@ namespace hooks
     else print a useful message to KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
+    template <bool is_throwing = false>
+    inline filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
     {
       KERNELTEST_EXCEPTION_TRY
       {
@@ -150,23 +151,31 @@ namespace hooks
           else
             break;
         }
+#ifdef __cpp_exceptions
         if(is_throwing)
           throw std::runtime_error("Couldn't figure out where the product lives");
         else
+#endif
         {
-          KERNELTEST_CERR("FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product << " directory somewhere in or above the directory you run the tests from." << std::endl);
+          KERNELTEST_CERR("FATAL: Couldn't figure out where the product " << _product << " lives. You need a " << _product
+                                                                          << " directory somewhere in or above the directory you run the tests from."
+                                                                          << std::endl);
           std::terminate();
         }
       }
       KERNELTEST_EXCEPTION_CATCH_ALL
       {
+#ifdef __cpp_exceptions
         if(!is_throwing)
+#endif
         {
           KERNELTEST_CERR("library_directory() unexpectedly failed" << std::endl);
           std::terminate();
         }
+#ifdef __cpp_exceptions
         else
           throw;
+#endif
       }
     }
 
@@ -193,23 +202,30 @@ namespace hooks
         {
           return library_dir / "test" / "tests" / workspace;
         }
+#ifdef __cpp_exceptions
         if(is_throwing)
           throw std::runtime_error("Couldn't figure out where the test workspace templates live");
         else
+#endif
         {
-          KERNELTEST_CERR("FATAL: Couldn't figure out where the test workspace templates live for test " << workspace << ". Product source directory is thought to be " << library_dir << std::endl);
+          KERNELTEST_CERR("FATAL: Couldn't figure out where the test workspace templates live for test "
+                          << workspace << ". Product source directory is thought to be " << library_dir << std::endl);
           std::terminate();
         }
       }
       KERNELTEST_EXCEPTION_CATCH_ALL
       {
+#ifdef __cpp_exceptions
         if(!is_throwing)
+#endif
         {
           KERNELTEST_CERR("workspace_template_path() unexpectedly failed" << std::endl);
           std::terminate();
         }
+#ifdef __cpp_exceptions
         else
-          throw;
+          KERNELTEST_EXCEPTION_RETHROW;
+#endif
       }
     }
 
@@ -229,8 +245,10 @@ namespace hooks
             return;
           filesystem::remove_all(_current, ec);
         } while(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count() < 5);
+#ifdef __cpp_exceptions
         if(is_throwing)
           throw std::runtime_error("Couldn't delete workspace after five seconds of trying");
+#endif
         KERNELTEST_CERR("FATAL: Couldn't delete " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
         std::terminate();
       }
@@ -244,10 +262,14 @@ namespace hooks
         _remove_workspace();
 
         std::error_code ec;
-        auto fatalexit = [&] {
+        auto fatalexit = [&]
+        {
+#ifdef __cpp_exceptions
           if(is_throwing)
             throw std::system_error(ec);
-          KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying." << std::endl);
+#endif
+          KERNELTEST_CERR("FATAL: Couldn't copy " << template_path << " to " << _current << " due to " << ec.message() << " after five seconds of trying."
+                                                  << std::endl);
           std::terminate();
         };
         // Is the input workspace no workspace? In which case create an empty directory
@@ -278,7 +300,8 @@ namespace hooks
                     ULONG ReparseTag;
                     USHORT ReparseDataLength;
                     USHORT Reserved;
-                    union {
+                    union
+                    {
                       struct
                       {
                         USHORT SubstituteNameOffset;
@@ -303,7 +326,9 @@ namespace hooks
                     };
                   } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
                   bool is_symlink = false;
-                  HANDLE h = CreateFileW(it->path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+                  HANDLE h = CreateFileW(it->path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ,
+                                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
                   if(h == INVALID_HANDLE_VALUE)
                   {
                     ec = std::error_code(GetLastError(), std::system_category());
@@ -317,7 +342,8 @@ namespace hooks
                     is_symlink = true;
                     CloseHandle(h);
                     auto destpath = destdir / it->path().filename();
-                    h = CreateFileW(destpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ | FILE_WRITE_ATTRIBUTES | STANDARD_RIGHTS_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_ALWAYS, 0, NULL);
+                    h = CreateFileW(destpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ | FILE_WRITE_ATTRIBUTES | STANDARD_RIGHTS_WRITE,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_ALWAYS, 0, NULL);
                     if(h == INVALID_HANDLE_VALUE)
                     {
                       ec = std::error_code(GetLastError(), std::system_category());
@@ -386,10 +412,13 @@ namespace hooks
     template <bool is_throwing> struct inst
     {
       const char *workspacebase;
-      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return impl<is_throwing, Parent, RetType>(parent, testret, idx, filesystem::path(workspacebase) / workspace); }
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
+      {
+        return impl<is_throwing, Parent, RetType>(parent, testret, idx, filesystem::path(workspacebase) / workspace);
+      }
       std::string print(const char *workspace) const { return std::string("precondition ") + workspace; }
     };
-  }
+  }  // namespace filesystem_setup_impl
   //! The parameters for the filesystem_setup hook
   using filesystem_setup_parameters = parameters<const char *>;
   /*! Kernel test hook setting up a workspace directory for the test to run inside and deleting it after.
@@ -406,7 +435,10 @@ namespace hooks
   `current_test_kernel.working_directory` is also set to the working directory.
   \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
   */
-  template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase = current_test_kernel.test) { return filesystem_setup_impl::inst<is_throwing>{workspacebase}; }
+  template <bool is_throwing = false> constexpr inline auto filesystem_setup(const char *workspacebase = current_test_kernel.test)
+  {
+    return filesystem_setup_impl::inst<is_throwing>{workspacebase};
+  }
 
   namespace filesystem_comparison_impl
   {
@@ -440,105 +472,120 @@ namespace hooks
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
-    template <bool compare_contents, bool compare_timestamps> optional<result<filesystem::path>> compare_directories(filesystem::path before, filesystem::path after) noexcept
+    template <bool compare_contents, bool compare_timestamps>
+    optional<result<filesystem::path>> compare_directories(filesystem::path before, filesystem::path after) noexcept
     {
       KERNELTEST_EXCEPTION_TRY
       {
         // Make list of everything in after
         std::unordered_map<filesystem::path, filesystem::directory_entry, path_hasher> after_items;
-        depth_first_walk(after, [&](filesystem::directory_entry dirent) -> int {
-          after_items[dirent.path()] = std::move(dirent);
-          return 0;
-        });
+        depth_first_walk(after,
+                         [&](filesystem::directory_entry dirent) -> int
+                         {
+                           after_items[dirent.path()] = std::move(dirent);
+                           return 0;
+                         });
 
         // We need to remove each item as we check, if anything remains we fail
-        optional<result<filesystem::path>> ret = depth_first_walk(before, [&](filesystem::directory_entry dirent) -> optional<result<filesystem::path>> {
-          KERNELTEST_EXCEPTION_TRY
-          {
-            filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
-            filesystem::path afterpath(after / leafpath);
+        optional<result<filesystem::path>> ret =
+        depth_first_walk(before,
+                         [&](filesystem::directory_entry dirent) -> optional<result<filesystem::path>>
+                         {
+                           KERNELTEST_EXCEPTION_TRY
+                           {
+                             filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
+                             filesystem::path afterpath(after / leafpath);
 #ifdef _WIN32
-            if((GetFileAttributesW(dirent.path().c_str()) & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
-            {
-              typedef struct _REPARSE_DATA_BUFFER  // NOLINT
-              {
-                ULONG ReparseTag;
-                USHORT ReparseDataLength;
-                USHORT Reserved;
-                union {
-                  struct
-                  {
-                    USHORT SubstituteNameOffset;
-                    USHORT SubstituteNameLength;
-                    USHORT PrintNameOffset;
-                    USHORT PrintNameLength;
-                    ULONG Flags;
-                    WCHAR PathBuffer[1];
-                  } SymbolicLinkReparseBuffer;
-                  struct
-                  {
-                    USHORT SubstituteNameOffset;
-                    USHORT SubstituteNameLength;
-                    USHORT PrintNameOffset;
-                    USHORT PrintNameLength;
-                    WCHAR PathBuffer[1];
-                  } MountPointReparseBuffer;
-                  struct
-                  {
-                    UCHAR DataBuffer[1];
-                  } GenericReparseBuffer;
-                };
-              } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
-              TCHAR buffer1[32769], buffer2[32769];
-              memset(buffer1, 0, sizeof(buffer1));
-              memset(buffer2, 0, sizeof(buffer2));
-              auto *rpd1 = (REPARSE_DATA_BUFFER *) buffer1;
-              auto *rpd2 = (REPARSE_DATA_BUFFER *) buffer2;
-              DWORD read1 = 0, read2 = 0;
-              HANDLE h = CreateFileW(dirent.path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
-              if(h != INVALID_HANDLE_VALUE)
-              {
-                if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd1, (DWORD) sizeof(buffer1), &read1, NULL))
-                {
-                  CloseHandle(h);
-                }
-                else
-                {
-                  CloseHandle(h);
-                  goto differs;
-                }
-              }
-              h = CreateFileW(afterpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
-              if(h != INVALID_HANDLE_VALUE)
-              {
-                if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd2, (DWORD) sizeof(buffer2), &read2, NULL))
-                {
-                  CloseHandle(h);
-                }
-                else
-                {
-                  CloseHandle(h);
-                  goto differs;
-                }
-              }
-              if(rpd1->ReparseTag != rpd2->ReparseTag)
-                goto differs;
-              switch(rpd1->ReparseTag)
-              {
-              case IO_REPARSE_TAG_SYMLINK:
-                if(rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength != rpd2->SymbolicLinkReparseBuffer.SubstituteNameLength)
-                  goto differs;
-                if(memcmp(rpd1->SymbolicLinkReparseBuffer.PathBuffer + rpd1->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd2->SymbolicLinkReparseBuffer.PathBuffer + rpd2->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength) != 0)
-                  goto differs;
-                break;
-              case IO_REPARSE_TAG_MOUNT_POINT:
-                if(rpd1->MountPointReparseBuffer.SubstituteNameLength != rpd2->MountPointReparseBuffer.SubstituteNameLength)
-                  goto differs;
-                if(memcmp(rpd1->MountPointReparseBuffer.PathBuffer + rpd1->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd2->MountPointReparseBuffer.PathBuffer + rpd2->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t), rpd1->MountPointReparseBuffer.SubstituteNameLength) != 0)
-                  goto differs;
-                break;
-              }
-            }
+                             if((GetFileAttributesW(dirent.path().c_str()) & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+                             {
+                               typedef struct _REPARSE_DATA_BUFFER  // NOLINT
+                               {
+                                 ULONG ReparseTag;
+                                 USHORT ReparseDataLength;
+                                 USHORT Reserved;
+                                 union
+                                 {
+                                   struct
+                                   {
+                                     USHORT SubstituteNameOffset;
+                                     USHORT SubstituteNameLength;
+                                     USHORT PrintNameOffset;
+                                     USHORT PrintNameLength;
+                                     ULONG Flags;
+                                     WCHAR PathBuffer[1];
+                                   } SymbolicLinkReparseBuffer;
+                                   struct
+                                   {
+                                     USHORT SubstituteNameOffset;
+                                     USHORT SubstituteNameLength;
+                                     USHORT PrintNameOffset;
+                                     USHORT PrintNameLength;
+                                     WCHAR PathBuffer[1];
+                                   } MountPointReparseBuffer;
+                                   struct
+                                   {
+                                     UCHAR DataBuffer[1];
+                                   } GenericReparseBuffer;
+                                 };
+                               } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+                               TCHAR buffer1[32769], buffer2[32769];
+                               memset(buffer1, 0, sizeof(buffer1));
+                               memset(buffer2, 0, sizeof(buffer2));
+                               auto *rpd1 = (REPARSE_DATA_BUFFER *) buffer1;
+                               auto *rpd2 = (REPARSE_DATA_BUFFER *) buffer2;
+                               DWORD read1 = 0, read2 = 0;
+                               HANDLE h = CreateFileW(dirent.path().c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ,
+                                                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                                      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+                               if(h != INVALID_HANDLE_VALUE)
+                               {
+                                 if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd1, (DWORD) sizeof(buffer1), &read1, NULL))
+                                 {
+                                   CloseHandle(h);
+                                 }
+                                 else
+                                 {
+                                   CloseHandle(h);
+                                   goto differs;
+                                 }
+                               }
+                               h = CreateFileW(afterpath.c_str(), SYNCHRONIZE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_READ,
+                                               FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                               FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+                               if(h != INVALID_HANDLE_VALUE)
+                               {
+                                 if(DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, rpd2, (DWORD) sizeof(buffer2), &read2, NULL))
+                                 {
+                                   CloseHandle(h);
+                                 }
+                                 else
+                                 {
+                                   CloseHandle(h);
+                                   goto differs;
+                                 }
+                               }
+                               if(rpd1->ReparseTag != rpd2->ReparseTag)
+                                 goto differs;
+                               switch(rpd1->ReparseTag)
+                               {
+                               case IO_REPARSE_TAG_SYMLINK:
+                                 if(rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength != rpd2->SymbolicLinkReparseBuffer.SubstituteNameLength)
+                                   goto differs;
+                                 if(memcmp(rpd1->SymbolicLinkReparseBuffer.PathBuffer + rpd1->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t),
+                                           rpd2->SymbolicLinkReparseBuffer.PathBuffer + rpd2->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t),
+                                           rpd1->SymbolicLinkReparseBuffer.SubstituteNameLength) != 0)
+                                   goto differs;
+                                 break;
+                               case IO_REPARSE_TAG_MOUNT_POINT:
+                                 if(rpd1->MountPointReparseBuffer.SubstituteNameLength != rpd2->MountPointReparseBuffer.SubstituteNameLength)
+                                   goto differs;
+                                 if(memcmp(rpd1->MountPointReparseBuffer.PathBuffer + rpd1->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t),
+                                           rpd2->MountPointReparseBuffer.PathBuffer + rpd2->MountPointReparseBuffer.SubstituteNameOffset / sizeof(wchar_t),
+                                           rpd1->MountPointReparseBuffer.SubstituteNameLength) != 0)
+                                   goto differs;
+                                 break;
+                               }
+                             }
 #else
             if(filesystem::is_symlink(dirent.symlink_status()))
             {
@@ -548,55 +595,55 @@ namespace hooks
                 goto differs;
             }
 #endif
-            {
-              auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
-              if(filesystem::is_directory(beforestatus) != filesystem::is_directory(afterstatus))
-                goto differs;
-              if(filesystem::is_regular_file(beforestatus) != filesystem::is_regular_file(afterstatus))
-                goto differs;
-              if(filesystem::file_size(dirent.path()) != filesystem::file_size(afterpath))
-                goto differs;
-              if(compare_timestamps)
-              {
-                if(beforestatus.permissions() != afterstatus.permissions())
-                  goto differs;
-                if(filesystem::last_write_time(dirent.path()) != filesystem::last_write_time(afterpath))
-                  goto differs;
-              }
-            }
-            if(compare_contents)
-            {
-              std::ifstream beforeh(dirent.path()), afterh(afterpath);
-              char beforeb[16384] = "", afterb[16384] = "";
-              do
-              {
-                beforeh.read(beforeb, sizeof(beforeb));
-                afterh.read(afterb, sizeof(afterb));
-                if(memcmp(beforeb, afterb, sizeof(afterb)))
-                  goto differs;
-              } while(beforeh.good() && afterh.good());
-            }
-            // This item is identical
-            after_items.erase(afterpath);
-            return {};
-          differs:
-            return {success(leafpath)};
-          }
-          KERNELTEST_EXCEPTION_CATCH_ALL
-          {
-            return {error_from_exception()};
-          }
-        });
+                             {
+                               auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
+                               if(filesystem::is_directory(beforestatus) != filesystem::is_directory(afterstatus))
+                                 goto differs;
+                               if(filesystem::is_regular_file(beforestatus) != filesystem::is_regular_file(afterstatus))
+                                 goto differs;
+                               if(filesystem::file_size(dirent.path()) != filesystem::file_size(afterpath))
+                                 goto differs;
+                               if(compare_timestamps)
+                               {
+                                 if(beforestatus.permissions() != afterstatus.permissions())
+                                   goto differs;
+                                 if(filesystem::last_write_time(dirent.path()) != filesystem::last_write_time(afterpath))
+                                   goto differs;
+                               }
+                             }
+                             if(compare_contents)
+                             {
+                               std::ifstream beforeh(dirent.path()), afterh(afterpath);
+                               char beforeb[16384] = "", afterb[16384] = "";
+                               do
+                               {
+                                 beforeh.read(beforeb, sizeof(beforeb));
+                                 afterh.read(afterb, sizeof(afterb));
+                                 if(memcmp(beforeb, afterb, sizeof(afterb)))
+                                   goto differs;
+                               } while(beforeh.good() && afterh.good());
+                             }
+                             // This item is identical
+                             after_items.erase(afterpath);
+                             return {};
+                           differs:
+                             return {success(leafpath)};
+                           }
+                           KERNELTEST_EXCEPTION_CATCH_ALL
+                           {
+                             return {error_from_exception()};
+                           }
+                         });
         // If anything different, return that
         if(ret)
         {
-          if(ret.value())
+          if(*ret)
           {
-            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw item differ " << ret.value().value() << std::endl);
+            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw item differ " << ret->value() << std::endl);
           }
           else
           {
-            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw error " << ret.value().error() << std::endl);
+            KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw error " << ret->error() << std::endl);
           }
           // exit(1);
           return ret;
@@ -638,24 +685,29 @@ namespace hooks
         {
           if(!current_test_kernel.working_directory)
           {
-            KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to." << std::endl);
+            KERNELTEST_CERR("FATAL: There appears to be no hooks::filesystem_setup earlier in the hook sequence, therefore I have no workspace to compare to."
+                            << std::endl);
             std::terminate();
           }
           // Only do comparison if test passed
           if(testret)
           {
             // If this is empty, workspaces are identical
-            optional<result<filesystem::path>> workspaces_not_identical = compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
+            optional<result<filesystem::path>> workspaces_not_identical =
+            compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
             if(workspaces_not_identical)
             {
               // Propagate any error
               if(workspaces_not_identical->has_error())
               {
-                testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)));  //, workspaces_not_identical->error().message().c_str(), workspaces_not_identical->error().value()
+                testret = RetType(typename RetType::value_type::error_type(
+                make_error_code(kerneltest_errc::filesystem_comparison_internal_failure)));  //, workspaces_not_identical->error().message().c_str(),
+                                                                                             // workspaces_not_identical->error().value()
               }
               // Set error with extended message of the path which differs
               else if(workspaces_not_identical->has_value())
-                testret = RetType(typename RetType::value_type::error_type(make_error_code(kerneltest_errc::filesystem_comparison_failed)));  // , workspaces_not_identical->value().string().c_str()
+                testret = RetType(typename RetType::value_type::error_type(
+                make_error_code(kerneltest_errc::filesystem_comparison_failed)));  // , workspaces_not_identical->value().string().c_str()
             }
           }
         }
@@ -664,10 +716,13 @@ namespace hooks
     struct structure_inst
     {
       const char *workspacebase;
-      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const { return structure_impl<Parent, RetType>(parent, testret, idx, workspacebase, workspace); }
+      template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
+      {
+        return structure_impl<Parent, RetType>(parent, testret, idx, workspacebase, workspace);
+      }
       std::string print(const char *workspace) const { return std::string("postcondition ") + workspace; }
     };
-  }
+  }  // namespace filesystem_comparison_impl
   //! The parameters for the filesystem_comparison_structure hook
   using filesystem_comparison_structure_parameters = parameters<const char *>;
   /*! Kernel test hook comparing the structure of the test kernel workspace after the test to a workspace template.
@@ -682,8 +737,11 @@ namespace hooks
   match, the outcome is set to an appropriate errored state.
   \param workspacebase A path fragment inside `test/tests` of the base of the workspaces to choose from.
   */
-  constexpr inline auto filesystem_comparison_structure(const char *workspacebase = current_test_kernel.test) { return filesystem_comparison_impl::structure_inst{workspacebase}; }
-}
+  constexpr inline auto filesystem_comparison_structure(const char *workspacebase = current_test_kernel.test)
+  {
+    return filesystem_comparison_impl::structure_inst{workspacebase};
+  }
+}  // namespace hooks
 
 //! Alias hooks to precondition
 namespace precondition = hooks;

@@ -1,5 +1,5 @@
 /* permute_parameters
-(C) 2016-2017 Niall Douglas <http://www.nedproductions.biz/> (10 commits)
+(C) 2016-2025 Niall Douglas <http://www.nedproductions.biz/> (10 commits)
 File Created: Apr 2016
 
 
@@ -62,7 +62,10 @@ namespace detail
     template <class T> using type = std::array<optional<T>, has_constant_size<ParamSequence>::size>;
     constexpr ParamSequence operator()(size_t) const { return ParamSequence(); }
   };
-  template <class T> constexpr T make_permutation_results_type(size_t no) { return permutation_results_type<T>()(no); }
+  template <class T> constexpr T make_permutation_results_type(size_t no)
+  {
+    return permutation_results_type<T>()(no);
+  }
 
   template <class ParamSequence, class Callable> struct result_of_parameter_permute;
 #if defined(_MSC_VER) && (_MSC_VER >= 1923 && _MSC_VER <= 1929)  // these MSVCs need help
@@ -71,12 +74,14 @@ namespace detail
   {
     using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
   };
-  template <class OutcomeType, class Innards, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, Innards, Excess...>, Callable>
+  template <class OutcomeType, class Innards, class... Excess, class Callable>
+  struct result_of_parameter_permute<parameters<OutcomeType, Innards, Excess...>, Callable>
   {
     using type = typename msvc_result_of_parameter_permute<Innards, Callable>::type;
   };
 #endif
-  template <class OutcomeType, class... Types, class... Excess, class Callable> struct result_of_parameter_permute<parameters<OutcomeType, parameters<Types...>, Excess...>, Callable>
+  template <class OutcomeType, class... Types, class... Excess, class Callable>
+  struct result_of_parameter_permute<parameters<OutcomeType, parameters<Types...>, Excess...>, Callable>
   {
     using type = decltype(std::declval<Callable>()(std::declval<Types>()...));
   };
@@ -88,7 +93,7 @@ namespace detail
   {
     T _v;
     hooks_container<Ts...> _vs;
-    constexpr hooks_container(T &&v, Ts &&... vs)
+    constexpr hooks_container(T &&v, Ts &&...vs)
         : _v(std::move(v))
         , _vs(std::move(vs)...)
     {
@@ -106,49 +111,71 @@ namespace detail
 #pragma warning(push)
 #pragma warning(disable : 4100)  // unreferenced formal parameter
 #endif
-  template <class Hook, class Permuter, class Outcome, class... Types, size_t... Idxs> auto instantiate_hook(Hook &&hook, Permuter *parent, Outcome &out, size_t idx, const std::tuple<Types...> &pars, std::index_sequence<Idxs...>) { return hook(parent, out, idx, std::get<Idxs>(pars)...); }
+  template <class Hook, class Permuter, class Outcome, class... Types, size_t... Idxs>
+  auto instantiate_hook(Hook &&hook, Permuter *parent, Outcome &out, size_t idx, const std::tuple<Types...> &pars, std::index_sequence<Idxs...>)
+  {
+    return hook(parent, out, idx, std::get<Idxs>(pars)...);
+  }
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-  template <class... Hooks, class Permuter, class Outcome, class ParamSequence, size_t... Idxs> auto instantiate_hooks(const std::tuple<Hooks...> &hooks, Permuter *parent, Outcome &out, size_t idx, const ParamSequence &pars, std::index_sequence<Idxs...>)
+  template <class... Hooks, class Permuter, class Outcome, class ParamSequence, size_t... Idxs>
+  auto instantiate_hooks(const std::tuple<Hooks...> &hooks, Permuter *parent, Outcome &out, size_t idx, const ParamSequence &pars, std::index_sequence<Idxs...>)
   {
     // callspec is (parameter_permuter<...> *parent, outcome<T> &testret, size_t, pars)
     // pars<0> is expected outcome, pars<1> is kernel parameter set. pars<2> onwards are the hook parameters
     //
     // Cannot use tuple because can't guarantee order of destruction, it varies by
     // STL implementation
-    return hooks_container<decltype(instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>()))...>{
-    instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars), std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...};
+    return hooks_container<decltype(instantiate_hook(
+    std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars),
+    std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>()))...>{
+    instantiate_hook(std::get<Idxs>(hooks), parent, out, idx, std::get<2 + Idxs>(pars),
+                     std::make_index_sequence<parameters_size<typename parameters_element<2 + Idxs, ParamSequence>::type>::value>())...};
   }
 
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4100)  // unreferenced formal parameter
 #endif
-  template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
+  template <class U, class... Types, size_t... Idxs> auto call_f_with_parameters(U &&f, const parameters<Types...> &params, std::index_sequence<Idxs...>)
+  {
+    return f(std::get<Idxs>(params)...);
+  }
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-  template <class U, class... Types, size_t... Idxs> auto call_f_with_tuple(U &&f, const std::tuple<Types...> &params, std::index_sequence<Idxs...>) { return f(std::get<Idxs>(params)...); }
+  template <class U, class... Types, size_t... Idxs> auto call_f_with_tuple(U &&f, const std::tuple<Types...> &params, std::index_sequence<Idxs...>)
+  {
+    return f(std::get<Idxs>(params)...);
+  }
 
-  template <class T, class U, class V, class A, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<A, B, C> &shouldbe) { return kernel_outcome.value() == shouldbe; };
-  template <class T, class U, class A, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<A, B> &shouldbe) { return kernel_outcome.value() == shouldbe; };
+  template <class T, class U, class V, class A, class B, class C>
+  bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<A, B, C> &shouldbe)
+  {
+    return *kernel_outcome == shouldbe;
+  };
+  template <class T, class U, class A, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<A, B> &shouldbe)
+  {
+    return *kernel_outcome == shouldbe;
+  };
 
   // If should be has type void, we only care kernel_outcome has a value
-  template <class T, class U, class V, class B, class C> bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<void, B, C> &shouldbe)
+  template <class T, class U, class V, class B, class C>
+  bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<void, B, C> &shouldbe)
   {
-    if(kernel_outcome.value().has_value() && shouldbe.has_value())
-      return kernel_outcome.value().has_value() == shouldbe.has_value();
-    else if(shouldbe.has_error() && kernel_outcome.value().has_error())
+    if(kernel_outcome->has_value() && shouldbe.has_value())
+      return kernel_outcome->has_value() == shouldbe.has_value();
+    else if(shouldbe.has_error() && kernel_outcome->has_error())
     {
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-      const auto &kernel_outcome_sc = kernel_outcome.value().error();
+      const auto &kernel_outcome_sc = kernel_outcome->error();
       auto shouldbe_sc = shouldbe.error();
       // match errors for semantic equivalence
       if(kernel_outcome_sc == shouldbe_sc)
         return true;
 #else
-      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome.value().error());
+      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome->error());
       std::error_code shouldbe_ec = OUTCOME_V2_NAMESPACE::policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
       if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
@@ -166,18 +193,18 @@ namespace detail
   };
   template <class T, class U, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<void, B> &shouldbe)
   {
-    if(kernel_outcome.value().has_value() && shouldbe.has_value())
-      return kernel_outcome.value().has_value() == shouldbe.has_value();
-    else if(shouldbe.has_error() && kernel_outcome.value().has_error())
+    if(kernel_outcome->has_value() && shouldbe.has_value())
+      return kernel_outcome->has_value() == shouldbe.has_value();
+    else if(shouldbe.has_error() && kernel_outcome->has_error())
     {
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
-      const auto &kernel_outcome_sc = kernel_outcome.value().error();
+      const auto &kernel_outcome_sc = kernel_outcome->error();
       auto shouldbe_sc = shouldbe.error();
       // match errors for semantic equivalence
       if(kernel_outcome_sc == shouldbe_sc)
         return true;
 #else
-      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome.value().error());
+      std::error_code kernel_outcome_ec = OUTCOME_V2_NAMESPACE::policy::error_code(kernel_outcome->error());
       std::error_code shouldbe_ec = OUTCOME_V2_NAMESPACE::policy::error_code(shouldbe.error());
       // match errors for semantic equivalence
       if(kernel_outcome_ec.default_error_condition() == shouldbe_ec)
@@ -194,7 +221,11 @@ namespace detail
       return false;
   };
 
-  template <class T, class U, class V, class A, class B, class C, typename = decltype(std::declval<outcome<T, U, V>>() == std::declval<outcome<A, B, C>>())> inline bool compare(const outcome<T, U, V> &a, const outcome<A, B, C> &b) { return a == b; }
+  template <class T, class U, class V, class A, class B, class C, typename = decltype(std::declval<outcome<T, U, V>>() == std::declval<outcome<A, B, C>>())>
+  inline bool compare(const outcome<T, U, V> &a, const outcome<A, B, C> &b)
+  {
+    return a == b;
+  }
   template <class T, class U, class V, class B, class C> inline bool compare(const outcome<T, U, V> &a, const outcome<void, B, C> &b)
   {
     if(a.has_value() && b.has_value())
@@ -205,7 +236,11 @@ namespace detail
       return a.exception() == b.exception();
     return false;
   }
-  template <class T, class U, class A, class B, typename = decltype(std::declval<result<T, U>>() == std::declval<result<A, B>>())> inline bool compare(const result<T, U> &a, const result<A, B> &b) { return a == b; }
+  template <class T, class U, class A, class B, typename = decltype(std::declval<result<T, U>>() == std::declval<result<A, B>>())>
+  inline bool compare(const result<T, U> &a, const result<A, B> &b)
+  {
+    return a == b;
+  }
   template <class T, class U, class B> inline bool compare(const result<T, U> &a, const result<void, B> &b)
   {
     if(a.has_value() && b.has_value())
@@ -295,15 +330,18 @@ public:
     // The return type of the kernel callable
     using return_type = typename detail::result_of_parameter_permute<parameter_sequence_value_type, U>::type;
     permutation_results_type<return_type> results(detail::make_permutation_results_type<permutation_results_type<return_type>>(_params.size()));
-    permutation_results_type<const parameter_sequence_value_type *> params(detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
+    permutation_results_type<const parameter_sequence_value_type *> params(
+    detail::make_permutation_results_type<permutation_results_type<const parameter_sequence_value_type *>>(_params.size()));
     {
       auto it(params.begin());
       for(auto &i : _params)
         *it++ = &i;
     }
-    auto call_f = [&](size_t idx) {
+    auto call_f = [&](size_t idx)
+    {
       int stage = 0;
-      auto nested_f = [&](size_t idx) {
+      auto nested_f = [&](size_t idx)
+      {
         using callable_parameters_type = parameter_type<0>;
         const callable_parameters_type &p = parameter_value<0>(**params[idx]);
         KERNELTEST_EXCEPTION_TRY
@@ -313,7 +351,8 @@ public:
           (void) hooks;
           stage = 1;
           // Call the kernel
-          results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p, std::make_index_sequence<KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
+          results[idx] = detail::call_f_with_parameters(std::forward<U>(f), p,
+                                                        std::make_index_sequence<KERNELTEST_V1_NAMESPACE::parameters_size<callable_parameters_type>::value>());
           stage = 2;
         }
         KERNELTEST_EXCEPTION_CATCH_ALL
@@ -325,15 +364,13 @@ public:
             code = kerneltest_errc::teardown_exception_thrown;
           KERNELTEST_EXCEPTION_TRY
           {
-            throw;
+            KERNELTEST_EXCEPTION_RETHROW;
           }
           KERNELTEST_EXCEPTION_CATCH({}, const std::exception &e)
           {
             KERNELTEST_CERR("WARNING: C++ exception thrown '" << e.what() << "'" << std::endl);
           }
-          KERNELTEST_EXCEPTION_CATCH_ALL
-          {
-          }
+          KERNELTEST_EXCEPTION_CATCH_ALL {}
 #if 1
           results[idx] = return_type(in_place_type<typename return_type::error_type>, make_error_code(code));
 //! \todo If permuter kernel output is an outcome, return a nested exception ptr assuming compilers have caught up by then
@@ -398,10 +435,15 @@ public:
   \param fail Some callable with callspec bool(size_t, value, shouldbe) called if the values do not match
   \param pass Some callable with callspec bool(size_t, value, shouldbe) called if the values match
   */
-  template <class U, class V, class W, typename std::enable_if<QUICKCPPLIB_NAMESPACE::type_traits::is_sequence<U>::value, bool>::type = true> bool check(U &&sequence, V &&fail, W &&pass) const
+  template <class U, class V, class W, typename std::enable_if<QUICKCPPLIB_NAMESPACE::type_traits::is_sequence<U>::value, bool>::type = true>
+  bool check(U &&sequence, V &&fail, W &&pass) const
   {
     if(sequence.size() != _params.size())
+#ifdef __cpp_exceptions
       throw std::invalid_argument("sequence to check does not have same length as parameter permute sequence");
+#else
+      abort();
+#endif
     bool ret = true;
     auto it(sequence.cbegin());
     size_t idx = 0;
@@ -436,10 +478,14 @@ namespace detail
   template <class ParamSequence, class OutcomeType, class... Parameters> struct is_parameters_sequence_type_valid : std::false_type
   {
   };
-  template <class OutcomeType, class... Parameters, template <class...> class Container> struct is_parameters_sequence_type_valid<Container<parameters<OutcomeType, Parameters...>>, OutcomeType, Parameters...> : std::true_type
+  template <class OutcomeType, class... Parameters, template <class...> class Container>
+  struct is_parameters_sequence_type_valid<Container<parameters<OutcomeType, Parameters...>>, OutcomeType, Parameters...> : std::true_type
   {
   };
-  template <class T, size_t N, size_t... Idxs> auto array_from_Carray(const T (&seq)[N], std::index_sequence<Idxs...>) { return std::array<T, N>{{seq[Idxs]...}}; }
+  template <class T, size_t N, size_t... Idxs> auto array_from_Carray(const T (&seq)[N], std::index_sequence<Idxs...>)
+  {
+    return std::array<T, N>{{seq[Idxs]...}};
+  }
 }  // namespace detail
 
 /*! \brief Create a single threaded parameter permuter
@@ -449,15 +495,18 @@ namespace detail
 \tparam Hooks The types of any pretest or posttest hooks
 \param seq The sequence of parameter sets
 */
-template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> constexpr parameter_permuter<true, Sequence> st_permute_parameters(Sequence &&seq, Hooks &&... hooks)
+template <class OutcomeType, class... Parameters, class Sequence, class... Hooks,
+          typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type>
+constexpr parameter_permuter<true, Sequence> st_permute_parameters(Sequence &&seq, Hooks &&...hooks)
 {
   return parameter_permuter<false, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 //! \overload
-template <class... Parameters, size_t N, class... Hooks> constexpr auto st_permute_parameters(const parameters<Parameters...> (&seq)[N], Hooks &&... hooks)
+template <class... Parameters, size_t N, class... Hooks> constexpr auto st_permute_parameters(const parameters<Parameters...> (&seq)[N], Hooks &&...hooks)
 {
   // Convert C type arrays into std::array
-  return parameter_permuter<false, std::array<parameters<Parameters...>, N>, Hooks...>(detail::array_from_Carray<parameters<Parameters...>, N>(seq, std::make_index_sequence<N>()), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
+  return parameter_permuter<false, std::array<parameters<Parameters...>, N>, Hooks...>(
+  detail::array_from_Carray<parameters<Parameters...>, N>(seq, std::make_index_sequence<N>()), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 
 /*! \brief Create a multithreaded parameter permuter
@@ -467,15 +516,18 @@ template <class... Parameters, size_t N, class... Hooks> constexpr auto st_permu
 \tparam Hooks The types of any pretest or posttest hooks
 \param seq The sequence of parameter sets
 */
-template <class OutcomeType, class... Parameters, class Sequence, class... Hooks, typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type> constexpr parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&... hooks)
+template <class OutcomeType, class... Parameters, class Sequence, class... Hooks,
+          typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type>
+constexpr parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&...hooks)
 {
   return parameter_permuter<true, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 //! \overload
-template <class... Parameters, size_t N, class... Hooks> constexpr auto mt_permute_parameters(const parameters<Parameters...> (&seq)[N], Hooks &&... hooks)
+template <class... Parameters, size_t N, class... Hooks> constexpr auto mt_permute_parameters(const parameters<Parameters...> (&seq)[N], Hooks &&...hooks)
 {
   // Convert C type arrays into std::array
-  return parameter_permuter<true, std::array<parameters<Parameters...>, N>, Hooks...>(detail::array_from_Carray<parameters<Parameters...>, N>(seq, std::make_index_sequence<N>()), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
+  return parameter_permuter<true, std::array<parameters<Parameters...>, N>, Hooks...>(
+  detail::array_from_Carray<parameters<Parameters...>, N>(seq, std::make_index_sequence<N>()), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
 
 namespace detail
@@ -487,7 +539,7 @@ namespace detail
   class _print_params
   {
     template <bool first> static void _do() {}
-    template <bool first, class T, class... Types> static void _do(T &&v, Types &&... vs)
+    template <bool first, class T, class... Types> static void _do(T &&v, Types &&...vs)
     {
       if(!first)
         KERNELTEST_COUT(", ");
@@ -496,26 +548,27 @@ namespace detail
     };
 
   public:
-    template <class... Types> void operator()(Types &&... vs) const { _do<true>(std::forward<Types>(vs)...); }
+    template <class... Types> void operator()(Types &&...vs) const { _do<true>(std::forward<Types>(vs)...); }
   };
   template <class Permuter> class _print_hook
   {
     const typename Permuter::parameter_sequence_value_type &_v;
     template <size_t Idx> void _do() const {}
-    template <size_t Idx, class T, class... Types> void _do(T &&v, Types &&... vs) const
+    template <size_t Idx, class T, class... Types> void _do(T &&v, Types &&...vs) const
     {
       if(Idx > 0)
         KERNELTEST_COUT(", ");
       // Fetch the hook parameter set for this hook
       using hook_pars_type = typename Permuter::template parameter_type<1 + Idx>;
-      //#ifdef __c2__  // c2 be buggy
-      //      const auto &hook_pars = std::get<2 + Idx>(_v);
-      //#else
+      // #ifdef __c2__  // c2 be buggy
+      //       const auto &hook_pars = std::get<2 + Idx>(_v);
+      // #else
       const auto &hook_pars = Permuter::template parameter_value<1 + Idx>(_v);
-      //#endif
-      // Each hook instantiator exposes a member function print(...) which takes
-      // the same args as the hook instance
-      detail::call_f_with_parameters([&v](const auto &... vs) { KERNELTEST_COUT(v.print(vs...)); }, hook_pars, std::make_index_sequence<parameters_size<hook_pars_type>::value>());
+      // #endif
+      //  Each hook instantiator exposes a member function print(...) which takes
+      //  the same args as the hook instance
+      detail::call_f_with_parameters([&v](const auto &...vs) { KERNELTEST_COUT(v.print(vs...)); }, hook_pars,
+                                     std::make_index_sequence<parameters_size<hook_pars_type>::value>());
       _do<Idx + 1>(std::forward<Types>(vs)...);
     };
 
@@ -524,7 +577,7 @@ namespace detail
         : _v(v)
     {
     }
-    template <class... Types> void operator()(Types &&... vs) const { _do<0>(std::forward<Types>(vs)...); }
+    template <class... Types> void operator()(Types &&...vs) const { _do<0>(std::forward<Types>(vs)...); }
   };
   template <class Permuter> void pretty_print_preamble(const Permuter &_permuter, size_t idx)
   {
@@ -566,7 +619,8 @@ namespace detail
     {
       using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << print(shouldbe) << normal << ", was " << bold << print(result.value()) << normal << ")" << std::endl);
+      KERNELTEST_COUT("    " << bold << red << "FAILED" << normal << " (should be " << bold << print(shouldbe) << normal << ", was " << bold << print(*result)
+                             << normal << ")" << std::endl);
       _f(result, shouldbe);
       return false;
     }
@@ -587,7 +641,7 @@ namespace detail
     {
       using namespace QUICKCPPLIB_NAMESPACE::console_colours;
       pretty_print_preamble(_permuter, idx);
-      KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << print(result.value()) << std::endl);
+      KERNELTEST_COUT("    " << bold << green << "PASSED " << normal << print(*result) << std::endl);
       _f(result, shouldbe);
       return true;
     }
@@ -623,7 +677,10 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 {
   // Note that we accumulate failures into the checks vector for later processing
   std::vector<std::function<void()>> checks;
-  bool all_passed = permuter.check(results, pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe) { checks.push_back([&] { BOOST_CHECK(detail::compare(result.value(), shouldbe)); }); }), pretty_print_success(permuter));
+  bool all_passed = permuter.check(results,
+                                   pretty_print_failure(permuter, [&checks](const auto &result, const auto &shouldbe)
+                                                        { checks.push_back([&] { BOOST_CHECK(detail::compare(*result, shouldbe)); }); }),
+                                   pretty_print_success(permuter));
   BOOST_CHECK(all_passed);
   // The pretty printing gets messed up by the unit test output, so defer telling it
   // about failures until now
@@ -633,11 +690,11 @@ template <class Permuter, class Results> inline void check_results_with_boost_te
 
 /*! If expr is false, sets testreturn to an error_code_extended of `kerneltest_errc::check_failed` with an extended message of the expr which failed
  */
-#define KERNELTEST_CHECK(testreturn, expr)                                                                                                                                                                                                                                                                                     \
-  if(!(expr))                                                                                                                                                                                                                                                                                                                  \
-  {                                                                                                                                                                                                                                                                                                                            \
-                                                                                                                                                                                                                                                                                                                               \
-    (testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                                                                                                                                                                                    \
+#define KERNELTEST_CHECK(testreturn, expr)                                                                                                                     \
+  if(!(expr))                                                                                                                                                  \
+  {                                                                                                                                                            \
+                                                                                                                                                               \
+    (testreturn) = typename std::decay_t<decltype(testreturn)>::error_type(make_error_code(kerneltest_errc::check_failed));                                    \
   }
 
 
