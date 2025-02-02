@@ -210,22 +210,28 @@ function exported from the KernelTest DLL if not building headers only.
 
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
 #if !OUTCOME_USE_SYSTEM_STATUS_CODE && __has_include("outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp")
+#ifdef __cpp_exceptions
 #include "outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp"
+#endif
 #else
+#ifdef __cpp_exceptions
 #include <status-code/system_code_from_exception.hpp>
+#endif
 #endif
 #include "outcome/experimental/status_outcome.hpp"
 #include "outcome/iostream_support.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 #ifdef __cpp_exceptions
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code> using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S>;
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr>
-using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = OUTCOME_V2_NAMESPACE::experimental::policy::default_status_result_policy<R, S>>
+using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S, P>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr,
+          class N = OUTCOME_V2_NAMESPACE::experimental::policy::default_status_outcome_policy<R, S, P>>
+using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P, N>;
 #else
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code>
-using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S, OUTCOME_V2_NAMESPACE::policy::terminate>;
-template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr>
-using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P, OUTCOME_V2_NAMESPACE::policy::terminate>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = OUTCOME_V2_NAMESPACE::policy::terminate>
+using result = OUTCOME_V2_NAMESPACE::experimental::status_result<R, S, P>;
+template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = std::exception_ptr, class N = OUTCOME_V2_NAMESPACE::policy::terminate>
+using outcome = OUTCOME_V2_NAMESPACE::experimental::status_outcome<R, S, P, N>;
 #endif
 using OUTCOME_V2_NAMESPACE::failure;
 using OUTCOME_V2_NAMESPACE::in_place_type;
@@ -250,9 +256,9 @@ using OUTCOME_V2_NAMESPACE::in_place_type;
 using OUTCOME_V2_NAMESPACE::outcome;
 using OUTCOME_V2_NAMESPACE::result;
 #else
-template <class R, class S = std::error_code, class P = std::exception_ptr>
-using outcome = OUTCOME_V2_NAMESPACE::outcome<R, S, P, OUTCOME_V2_NAMESPACE::policy::terminate>;
-template <class R, class S = std::error_code> using result = OUTCOME_V2_NAMESPACE::result<R, S, OUTCOME_V2_NAMESPACE::policy::terminate>;
+template <class R, class S = std::error_code, class P = std::exception_ptr, class N = OUTCOME_V2_NAMESPACE::policy::terminate>
+using outcome = OUTCOME_V2_NAMESPACE::outcome<R, S, P, N>;
+template <class R, class S = std::error_code, class P = OUTCOME_V2_NAMESPACE::policy::terminate> using result = OUTCOME_V2_NAMESPACE::result<R, S, P>;
 #endif
 using OUTCOME_V2_NAMESPACE::success;
 KERNELTEST_V1_NAMESPACE_END
@@ -437,7 +443,7 @@ protected:
   {
     assert(code.domain() == *this);
     const auto &c = static_cast<const kerneltest_code &>(code);  // NOLINT
-    throw SYSTEM_ERROR2_NAMESPACE::status_error<_kerneltest_domain>(c);
+    KERNELTEST_EXCEPTION_THROW(SYSTEM_ERROR2_NAMESPACE::status_error<_kerneltest_domain>(c));
   }
 };
 constexpr _kerneltest_domain kerneltest_domain;
@@ -473,7 +479,11 @@ inline SYSTEM_ERROR2_NAMESPACE::system_code error_from_exception(std::exception_
                                                                  SYSTEM_ERROR2_NAMESPACE::system_code not_matched = SYSTEM_ERROR2_NAMESPACE::generic_code(
                                                                  SYSTEM_ERROR2_NAMESPACE::errc::resource_unavailable_try_again)) noexcept
 {
+#ifdef __cpp_exceptions
   return SYSTEM_ERROR2_NAMESPACE::system_code_from_exception(std::move(ep), std::move(not_matched));
+#else
+  abort();
+#endif
 }
 
 #else

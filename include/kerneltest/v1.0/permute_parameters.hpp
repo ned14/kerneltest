@@ -150,19 +150,20 @@ namespace detail
     return f(std::get<Idxs>(params)...);
   }
 
-  template <class T, class U, class V, class A, class B, class C>
-  bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<A, B, C> &shouldbe)
+  template <class T, class U, class V, class W, class A, class B, class C, class D>
+  bool check_result(const optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<A, B, C, D> &shouldbe)
   {
     return *kernel_outcome == shouldbe;
   };
-  template <class T, class U, class A, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<A, B> &shouldbe)
+  template <class T, class U, class V, class A, class B, class C>
+  bool check_result(const optional<result<T, U, V>> &kernel_outcome, const result<A, B, C> &shouldbe)
   {
     return *kernel_outcome == shouldbe;
   };
 
   // If should be has type void, we only care kernel_outcome has a value
-  template <class T, class U, class V, class B, class C>
-  bool check_result(const optional<outcome<T, U, V>> &kernel_outcome, const outcome<void, B, C> &shouldbe)
+  template <class T, class U, class V, class W, class B, class C, class D>
+  bool check_result(const optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<void, B, C, D> &shouldbe)
   {
     if(kernel_outcome->has_value() && shouldbe.has_value())
       return kernel_outcome->has_value() == shouldbe.has_value();
@@ -191,7 +192,7 @@ namespace detail
     else
       return false;
   };
-  template <class T, class U, class B> bool check_result(const optional<result<T, U>> &kernel_outcome, const result<void, B> &shouldbe)
+  template <class T, class U, class V, class B, class C> bool check_result(const optional<result<T, U, V>> &kernel_outcome, const result<void, B, C> &shouldbe)
   {
     if(kernel_outcome->has_value() && shouldbe.has_value())
       return kernel_outcome->has_value() == shouldbe.has_value();
@@ -221,12 +222,13 @@ namespace detail
       return false;
   };
 
-  template <class T, class U, class V, class A, class B, class C, typename = decltype(std::declval<outcome<T, U, V>>() == std::declval<outcome<A, B, C>>())>
-  inline bool compare(const outcome<T, U, V> &a, const outcome<A, B, C> &b)
+  template <class T, class U, class V, class W, class A, class B, class C, class D,
+            typename = decltype(std::declval<outcome<T, U, V>>() == std::declval<outcome<A, B, C>>())>
+  inline bool compare(const outcome<T, U, V, W> &a, const outcome<A, B, C, D> &b)
   {
     return a == b;
   }
-  template <class T, class U, class V, class B, class C> inline bool compare(const outcome<T, U, V> &a, const outcome<void, B, C> &b)
+  template <class T, class U, class V, class W, class B, class C, class D> inline bool compare(const outcome<T, U, V, W> &a, const outcome<void, B, C, D> &b)
   {
     if(a.has_value() && b.has_value())
       return true;
@@ -236,12 +238,12 @@ namespace detail
       return a.exception() == b.exception();
     return false;
   }
-  template <class T, class U, class A, class B, typename = decltype(std::declval<result<T, U>>() == std::declval<result<A, B>>())>
-  inline bool compare(const result<T, U> &a, const result<A, B> &b)
+  template <class T, class U, class V, class A, class B, class C, typename = decltype(std::declval<result<T, U>>() == std::declval<result<A, B>>())>
+  inline bool compare(const result<T, U, V> &a, const result<A, B, C> &b)
   {
     return a == b;
   }
-  template <class T, class U, class B> inline bool compare(const result<T, U> &a, const result<void, B> &b)
+  template <class T, class U, class V, class B, class C> inline bool compare(const result<T, U, V> &a, const result<void, B, C> &b)
   {
     if(a.has_value() && b.has_value())
       return true;
