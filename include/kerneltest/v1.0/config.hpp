@@ -1,5 +1,5 @@
 /* KernelTest config
-(C) 2016-2022 Niall Douglas <http://www.nedproductions.biz/> (7 commits)
+(C) 2016-2025 Niall Douglas <http://www.nedproductions.biz/> (7 commits)
 File Created: Apr 2016
 
 
@@ -38,20 +38,12 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "quickcpplib/cpp_feature.h"
 
-#ifndef __cpp_alias_templates
-#error KernelTest needs template alias support in the compiler
-#endif
-#ifndef __cpp_variadic_templates
-#error KernelTest needs variadic template support in the compiler
-#endif
-#if __cpp_constexpr < 201304L && !defined(_MSC_VER)
-#error KernelTest needs relaxed constexpr (C++ 14) support in the compiler
+#if !(_HAS_CXX17 || __cplusplus >= 201700)
+#error "KernelTest needs a minimum of C++ 17 support in the compiler"
 #endif
 #ifdef __has_include
-// clang-format off
-#if !__has_include(<filesystem>) && !__has_include(<experimental/filesystem>)
-// clang-format on
-#error KernelTest needs an implementation of the Filesystem TS in the standard library
+#if !__has_include(<filesystem>)
+#error "KernelTest needs an implementation of C++ 17 <filesystem> in the standard library"
 #endif
 #endif
 
@@ -89,46 +81,15 @@ using QUICKCPPLIB_NAMESPACE::scope::make_scope_fail;
 using QUICKCPPLIB_NAMESPACE::scope::make_scope_success;
 KERNELTEST_V1_NAMESPACE_END
 // Bring in an optional implementation
-#include "quickcpplib/optional.hpp"
+#include <optional>
 KERNELTEST_V1_NAMESPACE_BEGIN
-using namespace QUICKCPPLIB_NAMESPACE::optional;
+template <class T> using optional = std::optional<T>;
 KERNELTEST_V1_NAMESPACE_END
 // Bring in filesystem
-#if defined(__has_include)
-// clang-format off
-#if !KERNELTEST_FORCE_EXPERIMENTAL_FILESYSTEM && __has_include(<filesystem>) && (__cplusplus >= 201700 || _HAS_CXX17)
 #include <filesystem>
 KERNELTEST_V1_NAMESPACE_BEGIN
 namespace filesystem = std::filesystem;
 KERNELTEST_V1_NAMESPACE_END
-// C++ 14 filesystem support was dropped in VS2019 16.3
-// C++ 14 filesystem support was dropped in LLVM 11
-#elif __has_include(<experimental/filesystem>) && (!defined(_MSC_VER) || _MSC_VER < 1923) && (!defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 11000)  
-#include <experimental/filesystem>
-KERNELTEST_V1_NAMESPACE_BEGIN
-namespace filesystem = std::experimental::filesystem;
-KERNELTEST_V1_NAMESPACE_END
-#elif !KERNELTEST_FORCE_EXPERIMENTAL_FILESYSTEM && __has_include(<filesystem>)
-#if defined(_MSC_VER) && _MSC_VER >= 1923
-#error MSVC dropped support for C++ 14 <filesystem> from VS2019 16.3 onwards. Please enable C++ 17 or later.
-#endif
-#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 11000
-#error libc++ dropped support for C++ 14 <filesystem> from LLVM 11 onwards. Please enable C++ 17 or later.
-#endif
-#include <filesystem>
-KERNELTEST_V1_NAMESPACE_BEGIN
-namespace filesystem = std::filesystem;
-KERNELTEST_V1_NAMESPACE_END
-#endif
-// clang-format on
-#elif defined(_MSC_VER)
-#include <filesystem>
-KERNELTEST_V1_NAMESPACE_BEGIN
-namespace filesystem = std::experimental::filesystem;
-KERNELTEST_V1_NAMESPACE_END
-#else
-#error No <filesystem> implementation found
-#endif
 
 
 // Configure KERNELTEST_DECL
