@@ -333,7 +333,7 @@ namespace child_process
 
   std::map<filesystem::path::string_type, filesystem::path::string_type> current_process_env()
   {
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__) && defined(__GLIBC__)
     char **environ = __environ;
 #endif
     std::map<filesystem::path::string_type, filesystem::path::string_type> ret;
