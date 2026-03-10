@@ -497,6 +497,27 @@ inline std::error_code posix_error(int c = errno)
   return {c, std::system_category()};
 }
 #else
+#ifdef __MINGW32__
+KERNELTEST_V1_NAMESPACE_END
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#if _WIN32_WINNT < 0x0501
+#define _WIN32_WINNT 0x0501
+#endif
+#include <windows.h>
+#include <winioctl.h>
+KERNELTEST_V1_NAMESPACE_BEGIN
+
+//! Helper for constructing an error code from a DWORD
+inline std::error_code win32_error(DWORD c = GetLastError())
+{
+  return {static_cast<int>(c), std::system_category()};
+}
+#else
 namespace win32
 {
   // A Win32 DWORD
@@ -527,6 +548,7 @@ inline std::error_code win32_error(win32::DWORD c = win32::GetLastError())
 {
   return {static_cast<int>(c), std::system_category()};
 }
+#endif
 #endif
 
 #endif

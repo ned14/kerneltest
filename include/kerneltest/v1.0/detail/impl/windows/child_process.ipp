@@ -65,7 +65,9 @@ namespace child_process
     }
   }
 
-  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args, std::map<filesystem::path::string_type, filesystem::path::string_type> __env, bool use_parent_errh) noexcept
+  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args,
+                                                                                   std::map<filesystem::path::string_type, filesystem::path::string_type> __env,
+                                                                                   bool use_parent_errh) noexcept
   {
     using string_type = filesystem::path::string_type;
     using char_type = string_type::value_type;
@@ -96,15 +98,19 @@ namespace child_process
       rand_s((unsigned *) (randomname + 12));
       randomname[16] = randomname[8];
       randomname[8] = '\\';
-      ret._errh.h = CreateNamedPipeA(randomname, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_WRITE_THROUGH, PIPE_TYPE_BYTE, 1, 0, 0, 0, nullptr);
+      ret._errh.h =
+      CreateNamedPipeA(randomname, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_WRITE_THROUGH, PIPE_TYPE_BYTE, 1, 0, 0, 0, nullptr);
       if(!ret._errh.h)
         return win32_error();
-      childerrh.h = CreateFileA(randomname, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, nullptr);
+      childerrh.h =
+      CreateFileA(randomname, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, nullptr);
       if(!childerrh.h)
         return win32_error();
     }
 
-    auto unmypipes = make_scope_exit([&]() noexcept {
+    auto unmypipes = make_scope_exit(
+    [&]() noexcept
+    {
       CloseHandle(ret._readh.h);
       ret._readh.h = nullptr;
       CloseHandle(ret._writeh.h);
@@ -115,7 +121,9 @@ namespace child_process
         ret._errh.h = nullptr;
       }
     });
-    auto unhispipes = make_scope_exit([&]() noexcept {
+    auto unhispipes = make_scope_exit(
+    [&]() noexcept
+    {
       CloseHandle(childreadh.h);
       CloseHandle(childwriteh.h);
       if(!use_parent_errh)
@@ -171,7 +179,7 @@ namespace child_process
 
     // Close handles I no longer need
     CloseHandle(pi.hThread);
-    return std::move(ret);
+    return {std::move(ret)};
   }
 
   bool child_process::is_running() const noexcept
@@ -189,7 +197,8 @@ namespace child_process
     DWORD timeout = INFINITE;
     if(d != std::chrono::steady_clock::time_point())
     {
-      timeout = (std::chrono::steady_clock::now() < d) ? (DWORD) std::chrono::duration_cast<std::chrono::milliseconds>(d - std::chrono::steady_clock::now()).count() : 0;
+      timeout =
+      (std::chrono::steady_clock::now() < d) ? (DWORD) std::chrono::duration_cast<std::chrono::milliseconds>(d - std::chrono::steady_clock::now()).count() : 0;
     }
     DWORD ret = WaitForSingleObject(_processh.h, timeout);
     if(WAIT_TIMEOUT == ret)
@@ -207,7 +216,7 @@ namespace child_process
     filesystem::path::string_type buffer(32768, 0);
     DWORD len = GetModuleFileNameW(nullptr, const_cast<filesystem::path::string_type::value_type *>(buffer.data()), (DWORD) buffer.size());
     if(!len)
-      throw std::system_error(GetLastError(), std::system_category());
+      KERNELTEST_EXCEPTION_THROW(std::system_error(GetLastError(), std::system_category()));
     buffer.resize(len);
     return filesystem::path(std::move(buffer));
   }
@@ -231,6 +240,6 @@ namespace child_process
     }
     return ret;
   }
-}
+}  // namespace child_process
 
 KERNELTEST_V1_NAMESPACE_END
