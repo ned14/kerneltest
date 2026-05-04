@@ -34,6 +34,10 @@ Distributed under the Boost Software License, Version 1.0.
 #include <mutex>
 #include <unordered_map>
 
+#ifdef _WIN32
+#include <winioctl.h>  // for FSCTL_GET_REPARSE_POINT
+#endif
+
 KERNELTEST_V1_NAMESPACE_BEGIN
 
 namespace hooks
