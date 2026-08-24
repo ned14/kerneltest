@@ -151,7 +151,14 @@ namespace child_process
     for(auto &arg : ret._args)
     {
       if(argsbuffere - argsbuffer + arg.size() + 1 >= 32767)
+#ifdef KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND
+        // MSVC 14.51 (VS2026) incorrectly rejects the implicit chain of user-defined conversions
+        // errc -> generic_code -> system_code (error C2440), so perform the generic_code
+        // intermediate conversion explicitly. Semantically identical.
+        return SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::value_too_large);
+#else
         return errc::value_too_large;
+#endif
       memcpy(argsbuffere, arg.data(), sizeof(char_type) * arg.size());
       argsbuffere += arg.size();
       *argsbuffere++ = ' ';
@@ -161,7 +168,12 @@ namespace child_process
     for(auto &env : ret._env)
     {
       if(envbuffere - envbuffer + env.first.size() + env.second.size() + 2 >= 32767)
+#ifdef KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND
+        // MSVC 14.51 (VS2026) workaround, see above for details
+        return SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::value_too_large);
+#else
         return errc::value_too_large;
+#endif
       memcpy(envbuffere, env.first.data(), sizeof(char_type) * env.first.size());
       envbuffere += env.first.size();
       *envbuffere++ = '=';
@@ -202,7 +214,12 @@ namespace child_process
     }
     DWORD ret = WaitForSingleObject(_processh.h, timeout);
     if(WAIT_TIMEOUT == ret)
+#ifdef KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND
+      // MSVC 14.51 (VS2026) workaround, see above for details
+      return SYSTEM_ERROR2_NAMESPACE::generic_code(SYSTEM_ERROR2_NAMESPACE::errc::timed_out);
+#else
       return errc::timed_out;
+#endif
     if(WAIT_OBJECT_0 != ret)
       return win32_error();
     DWORD retcode = 0;

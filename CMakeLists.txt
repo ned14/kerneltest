@@ -4,6 +4,11 @@ include(QuickCppLibRequireOutOfSourceBuild)
 include(QuickCppLibUtils)
 include(QuickCppLibPolicies)
 
+option(KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND "Whether to work around MSVC 14.51 (VS2026) incorrectly rejecting the implicit errc->system_code conversion (error C2440) by performing the generic_code intermediate conversion explicitly" OFF)
+if(KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND)
+  target_compile_definitions(kerneltest_hl INTERFACE KERNELTEST_STATUS_CODE_MSVC1451_WORKAROUND=1)
+endif()
+
 # Parse the version we tell cmake directly from the version header file
 ParseProjectVersionFromHpp("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/version.hpp" VERSIONSTRING)
 # Sets the usual PROJECT_NAME etc
