@@ -69,10 +69,10 @@ namespace child_process
   };
 
   //! Returns the path of the calling process
-  KERNELTEST_HEADERS_ONLY_FUNC_SPEC filesystem::path current_process_path();
+  KERNELTEST_HEADERS_ONLY_FUNC_SPEC std::filesystem::path current_process_path();
 
   //! Returns the environment of the calling process
-  KERNELTEST_HEADERS_ONLY_FUNC_SPEC std::map<filesystem::path::string_type, filesystem::path::string_type> current_process_env();
+  KERNELTEST_HEADERS_ONLY_FUNC_SPEC std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> current_process_env();
 
   /*! \class child_process
   \brief Launches and manages a child process with stdin, stdout and stderr.
@@ -83,18 +83,18 @@ namespace child_process
   */
   class KERNELTEST_DECL child_process
   {
-    filesystem::path _path;
+    std::filesystem::path _path;
     native_handle_type _processh;
     native_handle_type _readh, _writeh, _errh;
     bool _use_parent_errh;
-    std::vector<filesystem::path::string_type> _args;
-    std::map<filesystem::path::string_type, filesystem::path::string_type> _env;
+    std::vector<std::filesystem::path::string_type> _args;
+    std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> _env;
     FILE *_stdin, *_stdout, *_stderr;
     std::ostream *_cin;
     std::istream *_cout, *_cerr;
 
   protected:
-    child_process(filesystem::path path, bool use_parent_errh, std::vector<filesystem::path::string_type> args, std::map<filesystem::path::string_type, filesystem::path::string_type> env)
+    child_process(std::filesystem::path path, bool use_parent_errh, std::vector<std::filesystem::path::string_type> args, std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> env)
         : _path(std::move(path))
         , _use_parent_errh(use_parent_errh)
         , _args(std::move(args))
@@ -151,15 +151,15 @@ namespace child_process
     ~child_process();
 
     //! Launches an executable as a child process. No shell is invoked on POSIX.
-    static KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> launch(filesystem::path path, std::vector<filesystem::path::string_type> args, std::map<filesystem::path::string_type, filesystem::path::string_type> env = current_process_env(),
+    static KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> launch(std::filesystem::path path, std::vector<std::filesystem::path::string_type> args, std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> env = current_process_env(),
                                                                                    bool use_parent_errh = false) noexcept;
 
     //! Returns the path of the executable
-    const filesystem::path &path() const noexcept { return _path; }
+    const std::filesystem::path &path() const noexcept { return _path; }
     //! Returns the args used to launch the executable
-    const std::vector<filesystem::path::string_type> &arguments() const noexcept { return _args; }
+    const std::vector<std::filesystem::path::string_type> &arguments() const noexcept { return _args; }
     //! Returns the environment used to launch the executable
-    const std::map<filesystem::path::string_type, filesystem::path::string_type> &environment() const noexcept { return _env; }
+    const std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> &environment() const noexcept { return _env; }
     //! Returns the process identifier
     const native_handle_type &process_native_handle() const noexcept { return _processh; }
     //! Returns the read handle

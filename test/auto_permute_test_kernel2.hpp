@@ -19,7 +19,7 @@ namespace minimal_afio
   };
   struct file_handle
   {
-    using path_type = std::experimental::filesystem::path;
+    using path_type = std::filesystem::path;
     enum class mode : unsigned char
     {
       unchanged = 0,

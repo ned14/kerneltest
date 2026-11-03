@@ -36,14 +36,24 @@ Distributed under the Boost Software License, Version 1.0.
 #endif
 
 
-#include "quickcpplib/cpp_feature.h"
-
-#if !(_HAS_CXX17 || __cplusplus >= 201700)
+// KernelTest requires C++17 or later: <optional>, <filesystem> and the rest of
+// the C++17 library are used unconditionally, so there is no longer a pre-C++17
+// mode to configure. MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is
+// passed, so its real language mode is read from _MSVC_LANG; testing __cplusplus
+// alone would reject every default MSVC build.
+#if defined(_MSVC_LANG)
+#if _MSVC_LANG < 201703L
+#error "KernelTest needs a minimum of C++ 17 support in the compiler"
+#endif
+#elif __cplusplus < 201703L
 #error "KernelTest needs a minimum of C++ 17 support in the compiler"
 #endif
 #ifdef __has_include
 #if !__has_include(<filesystem>)
 #error "KernelTest needs an implementation of C++ 17 <filesystem> in the standard library"
+#endif
+#if !__has_include(<optional>)
+#error "KernelTest needs an implementation of C++ 17 <optional> in the standard library"
 #endif
 #endif
 
@@ -80,16 +90,11 @@ using QUICKCPPLIB_NAMESPACE::scope::make_scope_exit;
 using QUICKCPPLIB_NAMESPACE::scope::make_scope_fail;
 using QUICKCPPLIB_NAMESPACE::scope::make_scope_success;
 KERNELTEST_V1_NAMESPACE_END
-// Bring in an optional implementation
-#include <optional>
-KERNELTEST_V1_NAMESPACE_BEGIN
-template <class T> using optional = std::optional<T>;
-KERNELTEST_V1_NAMESPACE_END
-// Bring in filesystem
+// <optional> and <filesystem> are C++17, which is the floor, so they are included
+// and used directly: the kerneltest_v1::optional and kerneltest_v1::filesystem
+// aliases only ever existed for the standards which lacked them.
 #include <filesystem>
-KERNELTEST_V1_NAMESPACE_BEGIN
-namespace filesystem = std::filesystem;
-KERNELTEST_V1_NAMESPACE_END
+#include <optional>
 
 
 // Configure KERNELTEST_DECL
@@ -169,6 +174,11 @@ function exported from the KernelTest DLL if not building headers only.
 #endif
 
 
+// OUTCOME_TRY is used by the child_process implementation whichever status code kind
+// is configured, and outcome.hpp does not pull outcome/try.hpp in (it includes
+// result.hpp and std_outcome.hpp only), so it is named here once.
+#include "outcome/try.hpp"
+
 #if KERNELTEST_EXPERIMENTAL_STATUS_CODE
 #if !OUTCOME_USE_SYSTEM_STATUS_CODE && __has_include("outcome/experimental/status-code/include/status-code/system_code_from_exception.hpp")
 #ifdef __cpp_exceptions
@@ -181,6 +191,14 @@ function exported from the KernelTest DLL if not building headers only.
 #endif
 #include "outcome/experimental/status_outcome.hpp"
 #include "outcome/iostream_support.hpp"
+// outcome's iostream_support covers result/outcome, not the status code itself: the
+// status code's own streaming operators are in the status-code project's header, and
+// kerneltest streams a kerneltest_code in filesystem_workspace's failure message.
+#if !OUTCOME_USE_SYSTEM_STATUS_CODE && __has_include("outcome/experimental/status-code/include/status-code/iostream_support.hpp")
+#include "outcome/experimental/status-code/include/status-code/iostream_support.hpp"
+#else
+#include <status-code/iostream_support.hpp>
+#endif
 KERNELTEST_V1_NAMESPACE_BEGIN
 #ifdef __cpp_exceptions
 template <class R, class S = SYSTEM_ERROR2_NAMESPACE::system_code, class P = OUTCOME_V2_NAMESPACE::experimental::policy::default_status_result_policy<R, S>>
@@ -201,6 +219,9 @@ KERNELTEST_V1_NAMESPACE_END
 #else
 #include "outcome/iostream_support.hpp"
 #include "outcome/outcome.hpp"
+// error_from_exception lives in outcome/utils.hpp, which outcome.hpp does not pull in
+// either, so it is named here rather than relied on transitively.
+#include "outcome/utils.hpp"
 KERNELTEST_V1_NAMESPACE_BEGIN
 #ifdef __cpp_exceptions
 using OUTCOME_V2_NAMESPACE::error_from_exception;
@@ -248,12 +269,6 @@ KERNELTEST_V1_NAMESPACE_BEGIN
 #define KERNELTEST_CERR(...) std::cerr << __VA_ARGS__
 #endif
 
-//! Many <filesystem> TS implementations are not implementing std::hash for filesystem::path
-struct path_hasher
-{
-  size_t operator()(const filesystem::path &p) const { return std::hash<filesystem::path::string_type>()(p.native()); }
-};
-
 //! Contains various hooks which can be inserted into a `parameter_permuter`
 namespace hooks
 {
@@ -272,7 +287,7 @@ static QUICKCPPLIB_THREAD_LOCAL struct current_test_kernel_t
   const char *name;         //!< The name of the test within the current test kernel
   const char *description;  //!< The human readable description of the test
   //! The working directory for the calling thread, if any (see hooks::filesystem_setup).
-  const filesystem::path::value_type *working_directory;
+  const std::filesystem::path::value_type *working_directory;
 } current_test_kernel;
 
 

@@ -54,12 +54,12 @@ namespace detail
   };
   template <class ParamSequence, bool = has_constant_size<ParamSequence>::value> struct permutation_results_type
   {
-    template <class T> using type = std::vector<optional<T>>;
+    template <class T> using type = std::vector<std::optional<T>>;
     constexpr ParamSequence operator()(size_t no) const { return ParamSequence(no); }
   };
   template <class ParamSequence> struct permutation_results_type<ParamSequence, true>
   {
-    template <class T> using type = std::array<optional<T>, has_constant_size<ParamSequence>::size>;
+    template <class T> using type = std::array<std::optional<T>, has_constant_size<ParamSequence>::size>;
     constexpr ParamSequence operator()(size_t) const { return ParamSequence(); }
   };
   template <class T> constexpr T make_permutation_results_type(size_t no)
@@ -151,19 +151,19 @@ namespace detail
   }
 
   template <class T, class U, class V, class W, class A, class B, class C, class D>
-  bool check_result(const optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<A, B, C, D> &shouldbe)
+  bool check_result(const std::optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<A, B, C, D> &shouldbe)
   {
     return *kernel_outcome == shouldbe;
   };
   template <class T, class U, class V, class A, class B, class C>
-  bool check_result(const optional<result<T, U, V>> &kernel_outcome, const result<A, B, C> &shouldbe)
+  bool check_result(const std::optional<result<T, U, V>> &kernel_outcome, const result<A, B, C> &shouldbe)
   {
     return *kernel_outcome == shouldbe;
   };
 
   // If should be has type void, we only care kernel_outcome has a value
   template <class T, class U, class V, class W, class B, class C, class D>
-  bool check_result(const optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<void, B, C, D> &shouldbe)
+  bool check_result(const std::optional<outcome<T, U, V, W>> &kernel_outcome, const outcome<void, B, C, D> &shouldbe)
   {
     if(kernel_outcome->has_value() && shouldbe.has_value())
       return kernel_outcome->has_value() == shouldbe.has_value();
@@ -192,7 +192,7 @@ namespace detail
     else
       return false;
   };
-  template <class T, class U, class V, class B, class C> bool check_result(const optional<result<T, U, V>> &kernel_outcome, const result<void, B, C> &shouldbe)
+  template <class T, class U, class V, class B, class C> bool check_result(const std::optional<result<T, U, V>> &kernel_outcome, const result<void, B, C> &shouldbe)
   {
     if(kernel_outcome->has_value() && shouldbe.has_value())
       return kernel_outcome->has_value() == shouldbe.has_value();

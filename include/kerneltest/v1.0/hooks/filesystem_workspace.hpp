@@ -45,25 +45,25 @@ namespace hooks
   namespace filesystem_setup_impl
   {
     //! Record the current working directory and store it
-    static inline const filesystem::path &starting_path()
+    static inline const std::filesystem::path &starting_path()
     {
-      static filesystem::path p = filesystem::current_path();
+      static std::filesystem::path p = std::filesystem::current_path();
       return p;
     }
-    static inline filesystem::path _has_product(filesystem::path dir, const std::string &product)
+    static inline std::filesystem::path _has_product(std::filesystem::path dir, const std::string &product)
     {
-      if(filesystem::exists(dir / product))
+      if(std::filesystem::exists(dir / product))
         return dir / product;
-      if(filesystem::exists(dir / ("boost." + product)))
+      if(std::filesystem::exists(dir / ("boost." + product)))
         return dir / ("boost." + product);
-      return filesystem::path();
+      return std::filesystem::path();
     }
 
     struct library_directory_storage
     {
       std::unique_lock<std::mutex> lock;
-      filesystem::path &path;
-      library_directory_storage(std::unique_lock<std::mutex> &&_lock, filesystem::path &_path)
+      std::filesystem::path &path;
+      library_directory_storage(std::unique_lock<std::mutex> &&_lock, std::filesystem::path &_path)
           : lock(std::move(_lock))
           , path(_path)
       {
@@ -77,7 +77,7 @@ namespace hooks
     inline library_directory_storage override_library_directory()
     {
       static std::mutex lock;
-      static filesystem::path ret;
+      static std::filesystem::path ret;
       return library_directory_storage(std::unique_lock<std::mutex>(lock), ret);
     }
     /*! Figure out an absolute path to the base of the product's directory
@@ -93,7 +93,7 @@ namespace hooks
     process.
     */
     template <bool is_throwing = false>
-    inline filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
+    inline std::filesystem::path library_directory(const char *__product = current_test_kernel.product)  // noexcept(!is_throwing)
     {
       KERNELTEST_EXCEPTION_TRY
       {
@@ -101,7 +101,7 @@ namespace hooks
         auto ret = override_library_directory();
         if(__product == product)
           return ret.path;
-        filesystem::path library_dir = starting_path();
+        std::filesystem::path library_dir = starting_path();
 
         // Is there an environment variable KERNELTEST_product_HOME?
         std::string _product(__product);
@@ -140,18 +140,18 @@ namespace hooks
         // If no environment variable, start searching from the current working directory
         // Layout is <boost.afio>/test/tests/<test_name>/<workspace_templates>
         // We must also account for an out-of-tree build
-        filesystem::path temp;
+        std::filesystem::path temp;
         for(;;)
         {
           temp = _has_product(library_dir, _product);
-          if(!temp.empty() && filesystem::exists(temp / "test" / "tests"))
+          if(!temp.empty() && std::filesystem::exists(temp / "test" / "tests"))
           {
             ret.path = temp;
             product = _product;
             return ret.path;
           }
           if(library_dir.native().size() > 3)
-            library_dir = filesystem::canonical(library_dir / "..");
+            library_dir = std::filesystem::canonical(library_dir / "..");
           else
             break;
         }
@@ -191,18 +191,18 @@ namespace hooks
     else print a useful message to KERNELTEST_CERR() and terminate the
     process.
     */
-    template <bool is_throwing = false> inline filesystem::path workspace_template_path(const filesystem::path &workspace)  // noexcept(!is_throwing)
+    template <bool is_throwing = false> inline std::filesystem::path workspace_template_path(const std::filesystem::path &workspace)  // noexcept(!is_throwing)
     {
       KERNELTEST_EXCEPTION_TRY
       {
-        filesystem::path library_dir = library_directory();
-        if(filesystem::exists(library_dir / "test" / "tests" / workspace))
+        std::filesystem::path library_dir = library_directory();
+        if(std::filesystem::exists(library_dir / "test" / "tests" / workspace))
         {
           return library_dir / "test" / "tests" / workspace;
         }
         // The final directory is allowed to not exist
         auto workspace2 = workspace.parent_path();
-        if(filesystem::exists(library_dir / "test" / "tests" / workspace2))
+        if(std::filesystem::exists(library_dir / "test" / "tests" / workspace2))
         {
           return library_dir / "test" / "tests" / workspace;
         }
@@ -235,7 +235,7 @@ namespace hooks
 
     template <bool is_throwing, class Parent, class RetType> struct impl
     {
-      filesystem::path _current;
+      std::filesystem::path _current;
 
       void _remove_workspace()  // noexcept(!is_throwing)
       {
@@ -244,10 +244,10 @@ namespace hooks
         do
         {
           ec.clear();
-          bool exists = filesystem::exists(_current, ec);
+          bool exists = std::filesystem::exists(_current, ec);
           if(!exists && (!ec || ec == std::errc::no_such_file_or_directory))
             return;
-          filesystem::remove_all(_current, ec);
+          std::filesystem::remove_all(_current, ec);
         } while(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count() < 5);
 #ifdef __cpp_exceptions
         if(is_throwing)
@@ -257,7 +257,7 @@ namespace hooks
         std::terminate();
       }
 
-      impl(Parent *, RetType &, size_t, filesystem::path &&workspace)  // noexcept(!is_throwing)
+      impl(Parent *, RetType &, size_t, std::filesystem::path &&workspace)  // noexcept(!is_throwing)
       {
         auto template_path = workspace_template_path<is_throwing>(workspace);
         // Make the workspace we choose unique to this thread
@@ -277,12 +277,12 @@ namespace hooks
           std::terminate();
         };
         // Is the input workspace no workspace? In which case create an empty directory
-        bool exists = filesystem::exists(template_path, ec);
+        bool exists = std::filesystem::exists(template_path, ec);
         if(ec && ec != std::errc::no_such_file_or_directory)
           fatalexit();
         if(!exists)
         {
-          filesystem::create_directory(_current, ec);
+          std::filesystem::create_directory(_current, ec);
           if(ec)
             fatalexit();
         }
@@ -294,9 +294,9 @@ namespace hooks
             // VS2017 still doesn't understand symlinks :(, so copy in the starting filesystem environment by hand
             struct _
             {
-              static void copy_level(const filesystem::path &srcdir, const filesystem::path &destdir, std::error_code &ec)
+              static void copy_level(const std::filesystem::path &srcdir, const std::filesystem::path &destdir, std::error_code &ec)
               {
-                for(filesystem::directory_iterator it(srcdir); it != filesystem::directory_iterator(); ++it)
+                for(std::filesystem::directory_iterator it(srcdir); it != std::filesystem::directory_iterator(); ++it)
                 {
 #ifdef _WIN32
                   typedef struct _REPARSE_DATA_BUFFER  // NOLINT
@@ -364,31 +364,31 @@ namespace hooks
                   if(is_symlink)
                     continue;
 #else
-                  if(filesystem::is_symlink(it->status()))
+                  if(std::filesystem::is_symlink(it->status()))
                   {
-                    filesystem::copy_symlink(it->path(), destdir / it->path().filename(), ec);
+                    std::filesystem::copy_symlink(it->path(), destdir / it->path().filename(), ec);
                     if(ec)
                       return;
                   }
 #endif
-                  else if(filesystem::is_directory(it->status()))
+                  else if(std::filesystem::is_directory(it->status()))
                   {
-                    filesystem::create_directory(destdir / it->path().filename(), ec);
+                    std::filesystem::create_directory(destdir / it->path().filename(), ec);
                     ec.clear();
                     copy_level(it->path(), destdir / it->path().filename(), ec);
                     if(ec)
                       return;
                   }
-                  else if(filesystem::is_regular_file(it->status()))
+                  else if(std::filesystem::is_regular_file(it->status()))
                   {
-                    filesystem::copy_file(it->path(), destdir / it->path().filename(), ec);
+                    std::filesystem::copy_file(it->path(), destdir / it->path().filename(), ec);
                     if(ec)
                       return;
                   }
                 }
               }
             };
-            filesystem::create_directory(_current, ec);
+            std::filesystem::create_directory(_current, ec);
             ec.clear();
             _::copy_level(template_path, _current, ec);
             if(!ec)
@@ -398,7 +398,7 @@ namespace hooks
             fatalexit();
         }
         // Set the working directory to the newly configured workspace
-        filesystem::current_path(_current);
+        std::filesystem::current_path(_current);
         current_test_kernel.working_directory = _current.c_str();
       }
       constexpr impl(impl &&) noexcept = default;
@@ -408,7 +408,7 @@ namespace hooks
         if(!_current.empty())
         {
           current_test_kernel.working_directory = nullptr;
-          filesystem::current_path(starting_path());
+          std::filesystem::current_path(starting_path());
           _remove_workspace();
         }
       }
@@ -418,7 +418,7 @@ namespace hooks
       const char *workspacebase;
       template <class Parent, class RetType> auto operator()(Parent *parent, RetType &testret, size_t idx, const char *workspace) const
       {
-        return impl<is_throwing, Parent, RetType>(parent, testret, idx, filesystem::path(workspacebase) / workspace);
+        return impl<is_throwing, Parent, RetType>(parent, testret, idx, std::filesystem::path(workspacebase) / workspace);
       }
       std::string print(const char *workspace) const { return std::string("precondition ") + workspace; }
     };
@@ -447,22 +447,22 @@ namespace hooks
   namespace filesystem_comparison_impl
   {
     //! Walk a directory hierarchy, depth first. f(directory_entry) can return something to early exit.
-    template <class U> inline auto depth_first_walk(filesystem::path path, U &&f) -> decltype(f(std::declval<filesystem::directory_entry>()))
+    template <class U> inline auto depth_first_walk(std::filesystem::path path, U &&f) -> decltype(f(std::declval<std::filesystem::directory_entry>()))
     {
-      if(filesystem::exists(path))
+      if(std::filesystem::exists(path))
       {
-        for(filesystem::directory_iterator it(path); it != filesystem::directory_iterator(); ++it)
+        for(std::filesystem::directory_iterator it(path); it != std::filesystem::directory_iterator(); ++it)
         {
-          if(!filesystem::is_symlink(it->path()) /* work around bug in libstdc++ */ && filesystem::is_directory(it->status()))
+          if(!std::filesystem::is_symlink(it->path()) /* work around bug in libstdc++ */ && std::filesystem::is_directory(it->status()))
           {
             auto ret(depth_first_walk(it->path(), std::forward<U>(f)));
             if(ret)
               return ret;
           }
         }
-        for(filesystem::directory_iterator it(path); it != filesystem::directory_iterator(); ++it)
+        for(std::filesystem::directory_iterator it(path); it != std::filesystem::directory_iterator(); ++it)
         {
-          if(!filesystem::is_directory(it->status()))
+          if(!std::filesystem::is_directory(it->status()))
           {
             auto ret(f(*it));
             if(ret)
@@ -471,34 +471,36 @@ namespace hooks
         }
       }
       // Return default constructed edition of the type returned by the callable
-      return decltype(f(std::declval<filesystem::directory_entry>()))();
+      return decltype(f(std::declval<std::filesystem::directory_entry>()))();
     }
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
     template <bool compare_contents, bool compare_timestamps>
-    optional<result<filesystem::path>> compare_directories(filesystem::path before, filesystem::path after) noexcept
+    std::optional<result<std::filesystem::path>> compare_directories(std::filesystem::path before, std::filesystem::path after) noexcept
     {
       KERNELTEST_EXCEPTION_TRY
       {
-        // Make list of everything in after
-        std::unordered_map<filesystem::path, filesystem::directory_entry, path_hasher> after_items;
+        // Make list of everything in after. std::hash<std::filesystem::path> is
+        // guaranteed by C++17, which is why kerneltest's own path_hasher (written
+        // for the filesystem TS, whose implementations did not provide one) is gone.
+        std::unordered_map<std::filesystem::path, std::filesystem::directory_entry, std::hash<std::filesystem::path>> after_items;
         depth_first_walk(after,
-                         [&](filesystem::directory_entry dirent) -> int
+                         [&](std::filesystem::directory_entry dirent) -> int
                          {
                            after_items[dirent.path()] = std::move(dirent);
                            return 0;
                          });
 
         // We need to remove each item as we check, if anything remains we fail
-        optional<result<filesystem::path>> ret =
+        std::optional<result<std::filesystem::path>> ret =
         depth_first_walk(before,
-                         [&](filesystem::directory_entry dirent) -> optional<result<filesystem::path>>
+                         [&](std::filesystem::directory_entry dirent) -> std::optional<result<std::filesystem::path>>
                          {
                            KERNELTEST_EXCEPTION_TRY
                            {
-                             filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
-                             filesystem::path afterpath(after / leafpath);
+                             std::filesystem::path leafpath(dirent.path().native().substr(before.native().size() + 1));
+                             std::filesystem::path afterpath(after / leafpath);
 #ifdef _WIN32
                              if((GetFileAttributesW(dirent.path().c_str()) & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
                              {
@@ -591,27 +593,27 @@ namespace hooks
                                }
                              }
 #else
-            if(filesystem::is_symlink(dirent.symlink_status()))
+            if(std::filesystem::is_symlink(dirent.symlink_status()))
             {
-              if(filesystem::is_symlink(dirent.symlink_status()) != filesystem::is_symlink(filesystem::symlink_status(afterpath)))
+              if(std::filesystem::is_symlink(dirent.symlink_status()) != std::filesystem::is_symlink(std::filesystem::symlink_status(afterpath)))
                 goto differs;
-              if(filesystem::read_symlink(dirent.path()) != filesystem::read_symlink(afterpath))
+              if(std::filesystem::read_symlink(dirent.path()) != std::filesystem::read_symlink(afterpath))
                 goto differs;
             }
 #endif
                              {
                                auto beforestatus = dirent.status(), afterstatus = after_items[afterpath].status();
-                               if(filesystem::is_directory(beforestatus) != filesystem::is_directory(afterstatus))
+                               if(std::filesystem::is_directory(beforestatus) != std::filesystem::is_directory(afterstatus))
                                  goto differs;
-                               if(filesystem::is_regular_file(beforestatus) != filesystem::is_regular_file(afterstatus))
+                               if(std::filesystem::is_regular_file(beforestatus) != std::filesystem::is_regular_file(afterstatus))
                                  goto differs;
-                               if(filesystem::file_size(dirent.path()) != filesystem::file_size(afterpath))
+                               if(std::filesystem::file_size(dirent.path()) != std::filesystem::file_size(afterpath))
                                  goto differs;
                                if(compare_timestamps)
                                {
                                  if(beforestatus.permissions() != afterstatus.permissions())
                                    goto differs;
-                                 if(filesystem::last_write_time(dirent.path()) != filesystem::last_write_time(afterpath))
+                                 if(std::filesystem::last_write_time(dirent.path()) != std::filesystem::last_write_time(afterpath))
                                    goto differs;
                                }
                              }
@@ -673,12 +675,12 @@ namespace hooks
       Parent *parent;
       RetType &testret;
       size_t idx;
-      filesystem::path model_workspace;
+      std::filesystem::path model_workspace;
       structure_impl(Parent *_parent, RetType &_testret, size_t _idx, const char *workspacebase, const char *workspace)
           : parent(_parent)
           , testret(_testret)
           , idx(_idx)
-          , model_workspace(filesystem_setup_impl::workspace_template_path(filesystem::path(workspacebase) / workspace))
+          , model_workspace(filesystem_setup_impl::workspace_template_path(std::filesystem::path(workspacebase) / workspace))
       {
       }
       structure_impl(structure_impl &&) noexcept = default;
@@ -697,7 +699,7 @@ namespace hooks
           if(testret)
           {
             // If this is empty, workspaces are identical
-            optional<result<filesystem::path>> workspaces_not_identical =
+            std::optional<result<std::filesystem::path>> workspaces_not_identical =
             compare_directories<false, false>(current_test_kernel.working_directory, model_workspace);
             if(workspaces_not_identical)
             {

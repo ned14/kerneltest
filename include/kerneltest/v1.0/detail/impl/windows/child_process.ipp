@@ -65,11 +65,11 @@ namespace child_process
     }
   }
 
-  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args,
-                                                                                   std::map<filesystem::path::string_type, filesystem::path::string_type> __env,
+  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(std::filesystem::path __path, std::vector<std::filesystem::path::string_type> __args,
+                                                                                   std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> __env,
                                                                                    bool use_parent_errh) noexcept
   {
-    using string_type = filesystem::path::string_type;
+    using string_type = std::filesystem::path::string_type;
     using char_type = string_type::value_type;
     child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
     native_handle_type childreadh, childwriteh, childerrh;
@@ -228,19 +228,19 @@ namespace child_process
     return (intptr_t) retcode;
   }
 
-  filesystem::path current_process_path()
+  std::filesystem::path current_process_path()
   {
-    filesystem::path::string_type buffer(32768, 0);
-    DWORD len = GetModuleFileNameW(nullptr, const_cast<filesystem::path::string_type::value_type *>(buffer.data()), (DWORD) buffer.size());
+    std::filesystem::path::string_type buffer(32768, 0);
+    DWORD len = GetModuleFileNameW(nullptr, const_cast<std::filesystem::path::string_type::value_type *>(buffer.data()), (DWORD) buffer.size());
     if(!len)
       KERNELTEST_EXCEPTION_THROW(std::system_error(GetLastError(), std::system_category()));
     buffer.resize(len);
-    return filesystem::path(std::move(buffer));
+    return std::filesystem::path(std::move(buffer));
   }
 
-  std::map<filesystem::path::string_type, filesystem::path::string_type> current_process_env()
+  std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> current_process_env()
   {
-    using string_type = filesystem::path::string_type;
+    using string_type = std::filesystem::path::string_type;
     std::map<string_type, string_type> ret;
     string_type::value_type *strings = GetEnvironmentStringsW();
     auto unstrings = make_scope_exit([strings]() noexcept { FreeEnvironmentStringsW(strings); });

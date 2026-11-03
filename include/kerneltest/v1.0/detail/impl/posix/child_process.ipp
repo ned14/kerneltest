@@ -75,8 +75,8 @@ namespace child_process
     }
   }
 
-  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(filesystem::path __path, std::vector<filesystem::path::string_type> __args,
-                                                                                   std::map<filesystem::path::string_type, filesystem::path::string_type> __env,
+  KERNELTEST_HEADERS_ONLY_MEMFUNC_SPEC result<child_process> child_process::launch(std::filesystem::path __path, std::vector<std::filesystem::path::string_type> __args,
+                                                                                   std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> __env,
                                                                                    bool use_parent_errh) noexcept
   {
     child_process ret(std::move(__path), use_parent_errh, std::move(__args), std::move(__env));
@@ -298,7 +298,7 @@ namespace child_process
 #endif
   }
 
-  filesystem::path current_process_path()
+  std::filesystem::path current_process_path()
   {
     char buffer[PATH_MAX + 1];
 #ifdef __linux__
@@ -307,7 +307,7 @@ namespace child_process
     if(len > 0)
     {
       buffer[len] = 0;
-      return filesystem::path::string_type(buffer, len);
+      return std::filesystem::path::string_type(buffer, len);
     }
 #elif defined(__FreeBSD__)
     int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
@@ -316,13 +316,13 @@ namespace child_process
     if(ret >= 0)
     {
       buffer[len] = 0;
-      return filesystem::path::string_type(buffer, len);
+      return std::filesystem::path::string_type(buffer, len);
     }
 #elif defined(__APPLE__)
     uint32_t bufsize = PATH_MAX;
     if(_NSGetExecutablePath(buffer, &bufsize) == 0)
     {
-      return filesystem::path::string_type(buffer);
+      return std::filesystem::path::string_type(buffer);
     }
 #else
 #error Unknown platform
@@ -331,19 +331,19 @@ namespace child_process
     abort();
   }
 
-  std::map<filesystem::path::string_type, filesystem::path::string_type> current_process_env()
+  std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> current_process_env()
   {
 #if defined(__linux__) && !defined(__ANDROID__) && defined(__GLIBC__)
     char **environ = __environ;
 #endif
-    std::map<filesystem::path::string_type, filesystem::path::string_type> ret;
+    std::map<std::filesystem::path::string_type, std::filesystem::path::string_type> ret;
     for(char **env = environ; *env; ++env)
     {
       char *equals = strchr(*env, '=');
       char *end = strchr(*env, 0);
       if(!equals)
         equals = end;
-      ret.insert(std::make_pair(filesystem::path::string_type(*env, equals - *env), filesystem::path::string_type(equals + 1, end - equals)));
+      ret.insert(std::make_pair(std::filesystem::path::string_type(*env, equals - *env), std::filesystem::path::string_type(equals + 1, end - equals)));
     }
     return ret;
   }

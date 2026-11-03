@@ -22,14 +22,18 @@ if(NOT kerneltest_IS_DEPENDENCY)
   UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/revision.hpp")
 endif()
 # Find my library dependencies
+# Both dependencies come from their llm-fixes branches: quickcpplib's C++17 floor is
+# a propagated compile feature there, and Outcome's C ABI and status-code fixes are
+# what a C++17-only KernelTest is built against.
 find_quickcpplib_library(quickcpplib
   GIT_REPOSITORY "https://github.com/ned14/quickcpplib.git"
+  GIT_TAG "llm-fixes"
   REQUIRED
   IS_HEADER_ONLY
 )
 find_quickcpplib_library(outcome
   GIT_REPOSITORY "https://github.com/ned14/outcome.git"
-  GIT_TAG "master"
+  GIT_TAG "llm-fixes"
   REQUIRED
   IS_HEADER_ONLY
 )
@@ -37,13 +41,14 @@ find_quickcpplib_library(outcome
 # Make an interface only library so dependent CMakeLists can bring in this header-only library
 include(QuickCppLibMakeHeaderOnlyLibrary)
 
-# If we have concepts, enable those for both myself and all inclusions
-apply_cxx_concepts_to(INTERFACE kerneltest_hl)
-
 # Create a custom doxygen generation target
 include(QuickCppLibMakeDoxygen)
 # Set the standard definitions for these libraries and bring in the all_* helper functions
 include(QuickCppLibApplyDefaultDefinitions)
+# C++17 is the floor, not a preference: the headers use std::optional, std::filesystem
+# and std::string_view unconditionally, and the pre-C++17 shims are gone. As a compile
+# FEATURE it propagates, so a consumer which asks for C++14 is raised to 17 rather than
+# failing to compile kerneltest's headers.
 target_compile_features(kerneltest_hl INTERFACE cxx_std_17)
 
 # Set the library dependencies this library has
