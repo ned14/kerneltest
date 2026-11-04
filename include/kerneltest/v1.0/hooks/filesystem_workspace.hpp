@@ -30,7 +30,9 @@ Distributed under the Boost Software License, Version 1.0.
 #include "quickcpplib/algorithm/string.hpp"
 #include "quickcpplib/utils/thread.hpp"
 
+#include <cstring>  // memcmp/memset are used below (this header is not self-contained without it)
 #include <fstream>
+#include <map>
 #include <mutex>
 #include <unordered_map>
 
@@ -473,6 +475,34 @@ namespace hooks
       // Return default constructed edition of the type returned by the callable
       return decltype(f(std::declval<std::filesystem::directory_entry>()))();
     }
+    /*! Records the relative path of every directory reachable under `root`,
+    mapped to whether that entry is a symlink (a symlinked directory is recorded
+    but never descended into, so a cycle cannot be followed).
+
+    `depth_first_walk()` only ever hands a NON-directory to its callable, which is
+    why `compare_directories()` used to be blind to any difference which is a
+    directory on its own: a directory present on one side only was invisible
+    whenever it was empty, and `filesystem_comparison_structure()` reported two
+    plainly different workspaces as identical.
+    */
+    inline void collect_directories(const std::filesystem::path &root, const std::filesystem::path &rel, std::map<std::filesystem::path, bool> &out)
+    {
+      std::filesystem::path here(rel.empty() ? root : root / rel);
+      if(!std::filesystem::exists(here))
+        return;
+      for(std::filesystem::directory_iterator it(here); it != std::filesystem::directory_iterator(); ++it)
+      {
+        // is_directory(status()) follows symlinks, so a link to a directory counts
+        // as a directory here. That matches depth_first_walk()'s descent rule.
+        if(!std::filesystem::is_directory(it->status()))
+          continue;
+        std::filesystem::path child(rel.empty() ? std::filesystem::path(it->path().filename()) : rel / it->path().filename());
+        bool islink = std::filesystem::is_symlink(it->path());
+        out[child] = islink;
+        if(!islink)
+          collect_directories(root, child, out);
+      }
+    }
     /*! Compare two directories for equivalence, returning empty result if identical, else
     path of first differing item.
     */
@@ -660,6 +690,31 @@ namespace hooks
           KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw not present item " << after_items.begin()->first << std::endl);
           // exit(1);
           return {success(after_items.begin()->first)};
+        }
+        // Finally compare the directory ENTRIES themselves, both ways. Both walks
+        // above only hand non-directories to their callable, so without this an
+        // empty directory present on one side only was never compared at all.
+        {
+          std::map<std::filesystem::path, bool> before_dirs, after_dirs;
+          collect_directories(before, std::filesystem::path(), before_dirs);
+          collect_directories(after, std::filesystem::path(), after_dirs);
+          for(const auto &i : before_dirs)
+          {
+            auto j = after_dirs.find(i.first);
+            if(after_dirs.end() == j || j->second != i.second)
+            {
+              KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw a differing directory " << i.first << std::endl);
+              return {success(i.first)};
+            }
+          }
+          for(const auto &i : after_dirs)
+          {
+            if(before_dirs.end() == before_dirs.find(i.first))
+            {
+              KERNELTEST_CERR("WARNING: KernelTest workspace comparison saw a directory present only in the model " << i.first << std::endl);
+              return {success(i.first)};
+            }
+          }
         }
         // Otherwise both current and after are identical
         return {};

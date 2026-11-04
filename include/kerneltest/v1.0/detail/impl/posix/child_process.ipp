@@ -24,6 +24,7 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "../../../child_process.hpp"
 
+#include <cstring>
 #include <thread>
 
 #include <fcntl.h>
@@ -226,9 +227,17 @@ namespace child_process
       return false;
     siginfo_t info;
     memset(&info, 0, sizeof(info));
-    if(-1 == ::waitid(P_PID, _processh.pid, &info, WNOHANG | WNOWAIT))
-      return false;
-    return info.si_pid != 0;
+    // waitid() requires at least one of WEXITED, WSTOPPED or WCONTINUED. Without
+    // one, Linux rejects the call with EINVAL, which made this answer "not
+    // running" for EVERY child, permanently. WNOWAIT leaves the child in a
+    // waitable state, so this stays an observation: it must not consume the exit
+    // status which wait_until() still has to report.
+    if(-1 == ::waitid(P_PID, _processh.pid, &info, WEXITED | WNOHANG | WNOWAIT))
+      return false;  // ECHILD and friends: no longer our child, so not running
+    // si_pid is zero while the child has not changed state, and the child's pid
+    // once it has exited. The old test was that predicate backwards, so even
+    // with the options fixed it would have reported a live child as dead.
+    return info.si_pid == 0;
   }
 
   result<intptr_t> child_process::wait_until(std::chrono::steady_clock::time_point d) noexcept

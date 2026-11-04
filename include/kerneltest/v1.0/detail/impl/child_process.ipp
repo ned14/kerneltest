@@ -24,6 +24,7 @@ Distributed under the Boost Software License, Version 1.0.
 
 #include "../../child_process.hpp"
 
+#include <cstring>
 #include <fcntl.h>
 #ifdef _MSC_VER
 #include <io.h>
@@ -70,10 +71,18 @@ namespace child_process
     _writeh.h = nullptr;
     _errh.h = nullptr;
 #else
-    _readh.fd = 0;
-    _writeh.fd = 0;
-    _errh.fd = 0;
+    // -1, NOT 0: native_handle_type::operator bool() is `fd != -1`, so leaving 0
+    // here made everything below us believe the descriptor was still live. The
+    // destructor then did `if(_readh) ::close(_readh.fd)`, i.e. it closed
+    // STDIN_FILENO three times, on descriptors fclose() had already freed and
+    // which the runtime may since have handed out again.
+    _readh.fd = -1;
+    _writeh.fd = -1;
+    _errh.fd = -1;
 #endif
+    _stdin = nullptr;
+    _stdout = nullptr;
+    _stderr = nullptr;
   }
 
   // The following is borrowed from http://www.josuttis.com/cppcode/fdstream.hpp.html
