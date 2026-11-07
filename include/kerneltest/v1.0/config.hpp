@@ -279,7 +279,12 @@ namespace precondition = hooks;
 namespace postcondition = hooks;
 
 //! Keeps what the current test kernel is for the calling thread
-static QUICKCPPLIB_THREAD_LOCAL struct current_test_kernel_t
+/*! This is `inline` so that all translation units share the one instance. As a
+`static` it was duplicated per translation unit, so a test kernel in one TU set
+its fields in that TU's copy while merged inline hooks, which live in another,
+read that TU's empty one.
+*/
+inline QUICKCPPLIB_THREAD_LOCAL struct current_test_kernel_t
 {
   const char *category;     //!< The category of the current test kernel
   const char *product;      //!< The product of the current test kernel
