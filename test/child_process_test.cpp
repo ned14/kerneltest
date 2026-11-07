@@ -38,6 +38,10 @@ external program and behaves identically on POSIX and Windows.
 #include "kerneltest/v1.0/hooks/filesystem_workspace.hpp"
 
 #include <chrono>
+
+#ifndef _WIN32
+#include <csignal>  // for raise() and SIGKILL
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -306,6 +310,23 @@ namespace
       expect(r.value() == 7, "wait() still reports the child's exit status 7 after polling is_running(), got " + str(r.value()));
   }
 
+#ifndef _WIN32
+  // Regression: a child which dies of a signal must not be reported as having
+  // exited normally with the signal's number as its exit code. waitid() reports
+  // si_status for both, and only si_code says which happened.
+  void test_signal_death_is_not_an_exit_code()
+  {
+    auto launched = self_launch("--kt-child-suicide", "0");
+    if(!expect(launched.has_value(), "launch a child which kills itself: " + (launched.has_value() ? std::string() : str(launched.error()))))
+      return;
+    child_process_t cp(std::move(launched.value()));
+    const auto r = cp.wait();
+    if(!expect(r.has_value(), "wait() succeeds for a child which died of a signal: " + (r.has_value() ? std::string() : str(r.error()))))
+      return;
+    expect(r.value() == 128 + SIGKILL, "a child killed by SIGKILL is reported as 128+SIGKILL, not as its exit code, got " + str(r.value()));
+  }
+#endif
+
   void test_moved_from_handle()
   {
     auto launched = self_launch("--kt-child-sleep-ms", "400");
@@ -446,6 +467,13 @@ int main(int argc, char *argv[])
     {
       return number;
     }
+#ifndef _WIN32
+    if(mode == "--kt-child-suicide")
+    {
+      std::raise(SIGKILL);  // die of a signal, without ever returning
+      return 0;
+    }
+#endif
   }
 
   std::printf("current_process_path() = %s\n", child_process_ns::current_process_path().string().c_str());
@@ -454,6 +482,7 @@ int main(int argc, char *argv[])
   test_is_running_does_not_consume_exit_status();
   test_moved_from_handle();
 #ifndef _WIN32
+  test_signal_death_is_not_an_exit_code();
   test_destructor_does_not_close_stdin();
   test_destructor_does_not_close_a_reused_fd_zero();
   test_no_descriptor_leak();

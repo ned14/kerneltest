@@ -249,17 +249,31 @@ namespace child_process
     {
       siginfo_t info;
       memset(&info, 0, sizeof(info));
-      int options = WEXITED | WSTOPPED;
+      // Only WEXITED is requested. WSTOPPED reported a stopped child as a
+      // state change whose si_status is the STOP signal, and it was then
+      // decoded as a normal exit code, i.e. `SIGSTOP` became "exited with 19".
+      int options = WEXITED;
       if(d != std::chrono::steady_clock::time_point())
         options |= WNOHANG;
       if(-1 == ::waitid(P_PID, _processh.pid, &info, options))
         return posix_error();
-      if(info.si_signo == SIGCHLD)
+      if(info.si_signo != SIGCHLD)  // no state change: the child is still running
+        return true;
+      switch(info.si_code)
       {
+      case CLD_EXITED:
         ret = info.si_status;
         return false;
+      case CLD_KILLED:
+      case CLD_DUMPED:
+        // A signal death is NOT an exit status. Report it the way a shell does,
+        // so that it can never be mistaken for a normal exit with that number.
+        ret = 128 + info.si_status;
+        return false;
+      default:
+        // CLD_STOPPED, CLD_CONTINUED and anything else: not an exit.
+        return true;
       }
-      return true;
     };
     // TODO FIXME: Implement proper timed waits for child processes to exit
     do
