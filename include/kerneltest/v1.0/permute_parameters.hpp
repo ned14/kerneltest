@@ -503,7 +503,7 @@ namespace detail
 */
 template <class OutcomeType, class... Parameters, class Sequence, class... Hooks,
           typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type>
-constexpr parameter_permuter<true, Sequence> st_permute_parameters(Sequence &&seq, Hooks &&...hooks)
+constexpr parameter_permuter<false, Sequence, Hooks...> st_permute_parameters(Sequence &&seq, Hooks &&...hooks)
 {
   return parameter_permuter<false, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
@@ -524,7 +524,7 @@ template <class... Parameters, size_t N, class... Hooks> constexpr auto st_permu
 */
 template <class OutcomeType, class... Parameters, class Sequence, class... Hooks,
           typename = typename std::enable_if<detail::is_parameters_sequence_type_valid<Sequence, OutcomeType, Parameters...>::value>::type>
-constexpr parameter_permuter<true, Sequence> mt_permute_parameters(Sequence &&seq, Hooks &&...hooks)
+constexpr parameter_permuter<true, Sequence, Hooks...> mt_permute_parameters(Sequence &&seq, Hooks &&...hooks)
 {
   return parameter_permuter<true, Sequence, Hooks...>(std::forward<Sequence>(seq), std::tuple<Hooks...>(std::forward<Hooks>(hooks)...));
 }
