@@ -366,7 +366,11 @@ namespace hooks
                   if(is_symlink)
                     continue;
 #else
-                  if(std::filesystem::is_symlink(it->status()))
+                  // symlink_status() does not follow the link, status() does: for a
+                  // symlink to a directory status() says "directory" and the link
+                  // was then recursed into, copying out-of-tree content into the
+                  // workspace (and never terminating on a symlink loop).
+                  if(std::filesystem::is_symlink(it->symlink_status()))
                   {
                     std::filesystem::copy_symlink(it->path(), destdir / it->path().filename(), ec);
                     if(ec)
