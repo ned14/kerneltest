@@ -107,6 +107,10 @@ namespace detail
     {
     }
   };
+  template <> struct hooks_container<>
+  {
+    constexpr hooks_container() = default;
+  };
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4100)  // unreferenced formal parameter
