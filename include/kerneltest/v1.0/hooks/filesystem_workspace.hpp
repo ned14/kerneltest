@@ -480,16 +480,22 @@ namespace hooks
       return decltype(f(std::declval<std::filesystem::directory_entry>()))();
     }
     /*! Records the relative path of every directory reachable under `root`,
-    mapped to whether that entry is a symlink (a symlinked directory is recorded
-    but never descended into, so a cycle cannot be followed).
+    mapped to the target of that entry if it is a symlink and to an empty path
+    if it is a real directory (a symlinked directory is recorded but never
+    descended into, so a cycle cannot be followed).
 
     `depth_first_walk()` only ever hands a NON-directory to its callable, which is
     why `compare_directories()` used to be blind to any difference which is a
     directory on its own: a directory present on one side only was invisible
     whenever it was empty, and `filesystem_comparison_structure()` reported two
     plainly different workspaces as identical.
+
+    The value is the link target rather than a bool: recording only
+    "is a symlink" made two workspaces whose directory symlinks point
+    somewhere completely different compare as identical.
     */
-    inline void collect_directories(const std::filesystem::path &root, const std::filesystem::path &rel, std::map<std::filesystem::path, bool> &out)
+    inline void collect_directories(const std::filesystem::path &root, const std::filesystem::path &rel,
+                                    std::map<std::filesystem::path, std::filesystem::path> &out)
     {
       std::filesystem::path here(rel.empty() ? root : root / rel);
       if(!std::filesystem::exists(here))
@@ -502,7 +508,7 @@ namespace hooks
           continue;
         std::filesystem::path child(rel.empty() ? std::filesystem::path(it->path().filename()) : rel / it->path().filename());
         bool islink = std::filesystem::is_symlink(it->path());
-        out[child] = islink;
+        out[child] = islink ? std::filesystem::read_symlink(it->path()) : std::filesystem::path();
         if(!islink)
           collect_directories(root, child, out);
       }
@@ -627,12 +633,19 @@ namespace hooks
                                }
                              }
 #else
-            if(std::filesystem::is_symlink(dirent.symlink_status()))
             {
-              if(std::filesystem::is_symlink(dirent.symlink_status()) != std::filesystem::is_symlink(std::filesystem::symlink_status(afterpath)))
-                goto differs;
-              if(std::filesystem::read_symlink(dirent.path()) != std::filesystem::read_symlink(afterpath))
-                goto differs;
+              // Ask about the link itself (symlink_status), not about what it
+              // points at (status), and compare BOTH sides: testing only the
+              // before side meant a symlink present only in the model was then
+              // compared as a regular file and matched on size alone.
+              auto before_sym = dirent.symlink_status(), after_sym = std::filesystem::symlink_status(afterpath);
+              if(std::filesystem::is_symlink(before_sym) || std::filesystem::is_symlink(after_sym))
+              {
+                if(std::filesystem::is_symlink(before_sym) != std::filesystem::is_symlink(after_sym))
+                  goto differs;
+                if(std::filesystem::read_symlink(dirent.path()) != std::filesystem::read_symlink(afterpath))
+                  goto differs;
+              }
             }
 #endif
                              {
@@ -699,7 +712,7 @@ namespace hooks
         // above only hand non-directories to their callable, so without this an
         // empty directory present on one side only was never compared at all.
         {
-          std::map<std::filesystem::path, bool> before_dirs, after_dirs;
+          std::map<std::filesystem::path, std::filesystem::path> before_dirs, after_dirs;
           collect_directories(before, std::filesystem::path(), before_dirs);
           collect_directories(after, std::filesystem::path(), after_dirs);
           for(const auto &i : before_dirs)
