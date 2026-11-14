@@ -66,9 +66,17 @@ using child_process_t = child_process_ns::child_process;
 namespace
 {
   int failures = 0;
+  // Every expect() call, pass or fail. main() used to gate success on
+  // `failures == 0` alone, so a test whose whole body was #ifdef'd out - or which
+  // returned early - contributed nothing and the binary still announced a full
+  // pass. Each test now declares a floor and run_test() fails it for running
+  // fewer checks than that.
+  int checks_run = 0;
+  int skips = 0;
 
   bool expect(bool cond, const std::string &what)
   {
+    ++checks_run;
     if(cond)
     {
       std::printf("ok   : %s\n", what.c_str());
@@ -80,6 +88,30 @@ namespace
       ++failures;
     }
     return cond;
+  }
+
+  // A test which was deliberately not run on this platform. It must be visible in
+  // the log and must NOT read as a pass.
+  void skip(const std::string &what)
+  {
+    ++skips;
+    std::printf("SKIP : %s\n", what.c_str());
+  }
+
+  // Run one test and require it to have made at least `floor` checks. A skip is
+  // not a pass: a body which is compiled out, or which bails on the first
+  // precondition, fails here instead of contributing silence to a green suite.
+  void run_test(const char *name, void (*fn)(), int floor)
+  {
+    const int before = checks_run;
+    fn();
+    const int ran = checks_run - before;
+    if(ran < floor)
+    {
+      std::printf("FAIL : %s ran %d check(s), expected at least %d (a compiled-out or skipped test must not pass)\n", name, ran, floor);
+      std::fflush(stdout);
+      ++failures;
+    }
   }
 
   template <class T> std::string str(const T &v)
@@ -274,6 +306,43 @@ namespace
       expect_difference(compare(before, after), "a symlinked directory against a real directory is a difference");
     }
 #endif
+    // (j) a model workspace which does not exist must NOT read as "identical". Both
+    //     walks are existence-driven, so a missing tree yields an empty item set on
+    //     that side and used to fall through to "identical" - which is exactly what
+    //     workspace_template_path() hands back when only the template's parent exists.
+    //     It must now be an ERROR (internal failure): nothing was actually compared.
+    {
+      const path before = root / "j" / "before", after = root / "j" / "does_not_exist";
+      std::filesystem::create_directories(before);  // an EMPTY workspace, as in the report
+      const comparison r = compare(before, after);
+      if(!r.has_value())
+      {
+        expect(false, "a nonexistent model workspace is reported as IDENTICAL (silent green)");
+      }
+      else if(!r->has_error())
+      {
+        expect(false, "a nonexistent model workspace is reported as a difference rather than as an internal failure");
+      }
+      else
+      {
+        expect(true, "a nonexistent model workspace is reported as an internal failure");
+      }
+    }
+    // (k) ... and the same the other way round: an absent workspace is no more
+    //     identical to a model than an absent model is to a workspace.
+    {
+      const path before = root / "k" / "does_not_exist", after = root / "k" / "after";
+      std::filesystem::create_directories(after);  // an EMPTY model, so only existence differs
+      const comparison r = compare(before, after);
+      if(!r.has_value())
+      {
+        expect(false, "a nonexistent workspace is reported as IDENTICAL (silent green)");
+      }
+      else
+      {
+        expect(r->has_error(), "a nonexistent workspace is reported as an internal failure");
+      }
+    }
 
     std::filesystem::remove_all(root, ec);
   }
@@ -376,6 +445,12 @@ namespace
                "STDIN_FILENO still refers to the same file after the destructor");
       }
     }
+    else
+    {
+      // Nothing to observe: STDIN_FILENO was already closed when the suite started.
+      // Say so, rather than contributing two silent non-checks to a green run.
+      skip("test_destructor_does_not_close_stdin: STDIN_FILENO was not open, so its survival cannot be observed");
+    }
     if(saved_stdin >= 0)
     {
       ::dup2(saved_stdin, STDIN_FILENO);
@@ -445,6 +520,10 @@ namespace
     }
     const int after = count_open_fds();
     expect(after == before, "no descriptor leak across 8 launch/use/destroy cycles (" + str(before) + " -> " + str(after) + ")");
+#else
+    // count_open_fds() only works on Linux, and an empty function that returns
+    // without a word used to read as a pass.
+    skip("test_no_descriptor_leak: /proc/self/fd is only available on Linux");
 #endif
   }
 #endif
@@ -478,22 +557,30 @@ int main(int argc, char *argv[])
 
   std::printf("current_process_path() = %s\n", child_process_ns::current_process_path().string().c_str());
 
-  test_live_child_is_running();
-  test_is_running_does_not_consume_exit_status();
-  test_moved_from_handle();
+  // Each test declares the minimum number of checks it must make. `failures == 0`
+  // alone was a false green: a compiled-out body (#ifdef), an early return or a
+  // platform skip contributed nothing and the binary still announced a full pass.
+  run_test("test_live_child_is_running", test_live_child_is_running, 5);
+  run_test("test_is_running_does_not_consume_exit_status", test_is_running_does_not_consume_exit_status, 3);
+  run_test("test_moved_from_handle", test_moved_from_handle, 3);
 #ifndef _WIN32
-  test_signal_death_is_not_an_exit_code();
-  test_destructor_does_not_close_stdin();
-  test_destructor_does_not_close_a_reused_fd_zero();
-  test_no_descriptor_leak();
+  run_test("test_signal_death_is_not_an_exit_code", test_signal_death_is_not_an_exit_code, 2);
+  run_test("test_destructor_does_not_close_stdin", test_destructor_does_not_close_stdin, 3);
+  run_test("test_destructor_does_not_close_a_reused_fd_zero", test_destructor_does_not_close_a_reused_fd_zero, 2);
+  run_test("test_no_descriptor_leak", test_no_descriptor_leak, 2);
+#else
+  skip("test_signal_death_is_not_an_exit_code: POSIX signals are not available on Windows");
+  skip("test_destructor_does_not_close_stdin: POSIX pipe descriptors are not available on Windows");
+  skip("test_destructor_does_not_close_a_reused_fd_zero: POSIX pipe descriptors are not available on Windows");
+  skip("test_no_descriptor_leak: POSIX pipe descriptors are not available on Windows");
 #endif
-  test_directory_comparison();
+  run_test("test_directory_comparison", test_directory_comparison, 11);
 
   if(failures == 0)
   {
-    std::printf("\nAll child_process tests passed.\n");
+    std::printf("\nAll child_process tests passed (%d checks run, %d skipped).\n", checks_run, skips);
     return 0;
   }
-  std::printf("\n%d child_process test(s) FAILED.\n", failures);
+  std::printf("\n%d child_process test(s) FAILED (%d checks run, %d skipped).\n", failures, checks_run, skips);
   return 1;
 }
