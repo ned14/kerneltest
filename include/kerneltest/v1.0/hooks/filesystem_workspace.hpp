@@ -521,24 +521,23 @@ namespace hooks
     {
       KERNELTEST_EXCEPTION_TRY
       {
-        // A workspace which does not exist must never read as "identical". Both walks
-        // below are driven off existence - depth_first_walk() returns immediately when
-        // its path is absent, and collect_directories() early-returns the same way - so
-        // a missing 'after' yields an empty item set on that side and the function used
-        // to fall through to `return {};`, i.e. "the workspaces are identical". That is
-        // reachable in production: workspace_template_path() deliberately returns a
-        // nonexistent leaf when only its parent exists. structure_impl() maps any error
-        // here onto filesystem_comparison_internal_failure, so the test goes red rather
-        // than silently green.
+        // Neither side existing means nothing was compared at all, which must never read as
+        // "identical".
+        //
+        // ONE side missing is different: workspace_template_path() documents that "the final
+        // directory is allowed to not exist", and that is how a kernel declares "this
+        // workspace should contain no files" (LLFIO's create/close kernels name that model
+        // "non-existing"). A missing side is therefore an empty tree, and the walk and the
+        // leftover check below still report every entry the other side holds as a difference.
         {
           std::error_code ec;
           const bool before_isdir = std::filesystem::is_directory(before, ec);
           const bool after_isdir = std::filesystem::is_directory(after, ec);
-          if(!before_isdir || !after_isdir)
+          if(!before_isdir && !after_isdir)
           {
-            KERNELTEST_CERR("WARNING: KernelTest workspace comparison was given a "
-                            << (before_isdir ? "model" : "workspace") << " path which is not a directory (" << before << " vs " << after
-                            << "), refusing to call them identical" << std::endl);
+            KERNELTEST_CERR("WARNING: KernelTest workspace comparison was given neither a model nor a workspace "
+                            "directory ("
+                            << before << " vs " << after << "), refusing to call them identical" << std::endl);
             return {result<std::filesystem::path>(make_error_code(kerneltest_errc::filesystem_comparison_internal_failure))};
           }
         }

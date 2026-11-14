@@ -306,41 +306,37 @@ namespace
       expect_difference(compare(before, after), "a symlinked directory against a real directory is a difference");
     }
 #endif
-    // (j) a model workspace which does not exist must NOT read as "identical". Both
-    //     walks are existence-driven, so a missing tree yields an empty item set on
-    //     that side and used to fall through to "identical" - which is exactly what
-    //     workspace_template_path() hands back when only the template's parent exists.
-    //     It must now be an ERROR (internal failure): nothing was actually compared.
+    // (j) a model workspace which does not exist is how a kernel declares "no files"
+    //     (workspace_template_path() documents that the final directory is allowed to
+    //     not exist, and LLFIO's create/close kernels name that model "non-existing").
+    //     A missing side is an EMPTY tree: identical to an empty workspace, but every
+    //     entry the other side actually holds is still a difference.
     {
-      const path before = root / "j" / "before", after = root / "j" / "does_not_exist";
-      std::filesystem::create_directories(before);  // an EMPTY workspace, as in the report
+      const path before = root / "j" / "does_not_exist", after = root / "j" / "after";
+      std::filesystem::create_directories(after);
       const comparison r = compare(before, after);
-      if(!r.has_value())
-      {
-        expect(false, "a nonexistent model workspace is reported as IDENTICAL (silent green)");
-      }
-      else if(!r->has_error())
-      {
-        expect(false, "a nonexistent model workspace is reported as a difference rather than as an internal failure");
-      }
-      else
-      {
-        expect(true, "a nonexistent model workspace is reported as an internal failure");
-      }
+      expect(!r.has_value(), "an absent model workspace compares as an empty model (empty workspace is identical)");
     }
-    // (k) ... and the same the other way round: an absent workspace is no more
-    //     identical to a model than an absent model is to a workspace.
+    // (k) ... and an absent workspace against a model which holds a file is a difference,
+    //     not a pass.
     {
-      const path before = root / "k" / "does_not_exist", after = root / "k" / "after";
-      std::filesystem::create_directories(after);  // an EMPTY model, so only existence differs
+      const path before = root / "k" / "before", after = root / "k" / "does_not_exist";
+      write_file(before / "only.txt", "one");
+      expect_difference(compare(before, after), "an absent workspace against a non-empty model is a difference",
+                        "only.txt");
+    }
+    // (l) neither side existing means nothing was compared at all, which must not read as
+    //     success either.
+    {
+      const path before = root / "l" / "does_not_exist", after = root / "l" / "also_does_not_exist";
       const comparison r = compare(before, after);
       if(!r.has_value())
       {
-        expect(false, "a nonexistent workspace is reported as IDENTICAL (silent green)");
+        expect(false, "two nonexistent trees are reported as IDENTICAL (silent green)");
       }
       else
       {
-        expect(r->has_error(), "a nonexistent workspace is reported as an internal failure");
+        expect(r->has_error(), "two nonexistent trees are reported as an internal failure");
       }
     }
 
