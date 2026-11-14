@@ -22,18 +22,19 @@ if(NOT kerneltest_IS_DEPENDENCY)
   UpdateRevisionHppFromGit("${CMAKE_CURRENT_SOURCE_DIR}/include/kerneltest/revision.hpp")
 endif()
 # Find my library dependencies
-# Both dependencies come from their llm-fixes branches: quickcpplib's C++17 floor is
-# a propagated compile feature there, and Outcome's C ABI and status-code fixes are
-# what a C++17-only KernelTest is built against.
+# Both dependencies are tracked at their master branch: quickcpplib's C++17 floor is a
+# propagated compile feature there, and Outcome's C ABI and status-code fixes are what a
+# C++17-only KernelTest is built against. The llm-fixes pins were a stopgap while those
+# landed.
 find_quickcpplib_library(quickcpplib
   GIT_REPOSITORY "https://github.com/ned14/quickcpplib.git"
-  GIT_TAG "llm-fixes"
+  GIT_TAG "master"
   REQUIRED
   IS_HEADER_ONLY
 )
 find_quickcpplib_library(outcome
   GIT_REPOSITORY "https://github.com/ned14/outcome.git"
-  GIT_TAG "llm-fixes"
+  GIT_TAG "master"
   REQUIRED
   IS_HEADER_ONLY
 )
